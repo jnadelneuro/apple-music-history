@@ -130,8 +130,13 @@ class Computation {
     }
 
     static isSamePlay(play, previousPlay) {
-        // Since CSV has no artist info, we compare by song name and position only
-        // This is sufficient for detecting paused/resumed plays
+        // Since CSV has no artist info, we compare by song name and position only.
+        // This is sufficient for detecting paused/resumed plays because:
+        // 1. We check exact position matching (End Position = Start Position)
+        // 2. We check the pause reason (PLAYBACK_MANUALLY_PAUSED)
+        // 3. These are consecutive records in time
+        // The combination of these factors makes false positives (different songs with same name)
+        // extremely unlikely in practice.
         if (previousPlay != null &&
             Computation.isPlay(previousPlay) && 
             Computation.isPlay(play) &&
@@ -145,8 +150,13 @@ class Computation {
     }
 
     static isSamePlayNext(play, nextPlay) {
-        // Since CSV has no artist info, we compare by song name and position only
-        // This is sufficient for detecting paused/resumed plays
+        // Since CSV has no artist info, we compare by song name and position only.
+        // This is sufficient for detecting paused/resumed plays because:
+        // 1. We check exact position matching (End Position = Start Position)
+        // 2. We check the pause reason (PLAYBACK_MANUALLY_PAUSED)
+        // 3. These are consecutive records in time
+        // The combination of these factors makes false positives (different songs with same name)
+        // extremely unlikely in practice.
         if (nextPlay != null &&
             Computation.isPlay(nextPlay) && 
             Computation.isPlay(play) &&
