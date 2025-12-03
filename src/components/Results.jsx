@@ -24,6 +24,7 @@ class Results extends Component {
         super(props);
         this.state = {
             data: props.data,
+            libraryData: props.libraryData,
             excludedSongs: []
         };
     }
@@ -46,7 +47,7 @@ class Results extends Component {
                     thisYear: results.thisYear,
                     matchResults: results.matchResults
                 });
-            });
+            }, this.state.libraryData);
         }, 0);
     }
 
@@ -80,7 +81,7 @@ class Results extends Component {
                     matchResults: results.matchResults
                 });
                 
-            });
+            }, this.state.libraryData);
         }, 0);
 
 
@@ -105,7 +106,7 @@ class Results extends Component {
                     thisYear: results.thisYear,
                     matchResults: results.matchResults
                 });
-            });
+            }, this.state.libraryData);
         }, 0);
     }
 
