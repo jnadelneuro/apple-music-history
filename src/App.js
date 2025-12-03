@@ -15,7 +15,10 @@ class App extends Component {
 
   constructor(props) {
     super(props);
-    this.state = { data: [] };
+    this.state = { 
+      data: [],
+      libraryData: null
+    };
   }
 
 
@@ -28,11 +31,12 @@ class App extends Component {
     var appToLoad;
 
     if (this.state.data.length > 0) {
-      appToLoad = <Results data={this.state.data} />;
+      appToLoad = <Results data={this.state.data} libraryData={this.state.libraryData} />;
     } else {
-      appToLoad = <Banner dataResponseHandler={data => {
+      appToLoad = <Banner dataResponseHandler={(data, libraryData) => {
         this.setState({
-          data: data
+          data: data,
+          libraryData: libraryData
         })        
       }} />;
     }

@@ -128,10 +128,48 @@ class Banner extends Component {
 
     constructor(props) {
         super(props);
-        this.state = { loading: false };
+        this.state = { 
+            loading: false,
+            libraryData: null,
+            csvData: null
+        };
     }
 
 
+
+    handleLibraryUpload = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const libraryData = JSON.parse(e.target.result);
+                this.setState({ libraryData });
+                console.log('Library data loaded:', libraryData.length, 'tracks');
+            } catch (error) {
+                alert('Error reading library JSON file:\n\n' + error.message + '\n\nPlease make sure you uploaded a valid JSON file.');
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    handleCsvDataUploaded = (data) => {
+        var filterDate = document.getElementById("filterDate").value;
+
+        if (filterDate.length > 1) {
+            var tempArray = [];
+            for(var i = 0; i < data.length; i++) {
+                if (data[i]["Event End Timestamp"] >= filterDate + "T00:00:00" || data[i]["Event Start Timestamp"] >= filterDate + "T00:00:00") {
+                    tempArray.push(data[i]);                                        
+                }
+            }
+            data = tempArray;
+        }
+
+        // Pass both CSV data and library data to the parent
+        this.props.dataResponseHandler(data, this.state.libraryData);
+    }
 
     render() {
 
@@ -139,35 +177,49 @@ class Banner extends Component {
             <div>
                 <Jumbotron>
                     <h1 className="display-3">Apple Music Analyser</h1>
-                    <p className="lead">Open your <em>Apple Music Play Activity.csv</em> file below to generate your report.</p>
+                    <p className="lead">Upload your Apple Music files below to generate your report.</p>
                     <hr className="my-2" />
                     <p>No data ever leaves your computer and all computation is done in the browser.</p>
-                    <CsvParse
+                    
+                    <div className="box" style={{backgroundColor: '#d1ecf1', borderColor: '#bee5eb', padding: '15px', marginBottom: '20px'}}>
+                        <h5>📁 Step 1: Upload Library (Optional but Recommended)</h5>
+                        <p>Upload your <strong>Apple Music Library Activity.json</strong> file to enrich play data with artist information.</p>
+                        <input 
+                            id="libraryFile" 
+                            name="libraryFile" 
+                            type="file" 
+                            accept=".json"
+                            onChange={this.handleLibraryUpload}
+                            style={{marginBottom: '10px'}}
+                        />
+                        {this.state.libraryData && (
+                            <p style={{color: 'green', marginTop: '10px'}}>
+                                ✅ Library loaded: {this.state.libraryData.length} tracks
+                            </p>
+                        )}
+                    </div>
 
-                        keys={keys}
-                        onDataUploaded={data => {
-                            var filterDate = document.getElementById("filterDate").value;
-
-                            if (filterDate.length > 1) {
-                                var tempArray = [];
-                                for(var i = 0; i < data.length; i++) {
-                                    if (data[i]["Event End Timestamp"] >= filterDate + "T00:00:00" || data[i]["Event Start Timestamp"] >= filterDate + "T00:00:00") {
-                                        tempArray.push(data[i]);                                        
-                                    }
-                                }
-                                this.props.dataResponseHandler(tempArray);
-                            } else {
-                                this.props.dataResponseHandler(data);
-                            }
-
-                        }}
-                        onError={err => {
-
-                            alert('Error Occured\n\n' + err.reason + '\n\n Please contact @samthegeek on twitter for more help.')
-
-                        }}
-                        render={onChange => <div><div style={{marginBottom: '20px'}}><p>If you want to specify the start of the report, such as to only include 2021, input 01-01-2021 below. Otherwise, if you leave it blank it will generate the report based on all the data in the Apple Music Play Activity.csv file. </p>Choose date: <input id="filterDate" type="date" /></div><input id="file" name="file" className="inputfile" type="file" onChange={onChange} /><p>Loading may take a moment... be patient</p></div>}
-                    />
+                    <div className="box" style={{backgroundColor: '#fff3cd', borderColor: '#ffc107', padding: '15px', marginBottom: '20px'}}>
+                        <h5>📊 Step 2: Upload Play Activity (Required)</h5>
+                        <p>Upload your <strong>Apple Music Play Activity.csv</strong> file.</p>
+                        <CsvParse
+                            keys={keys}
+                            onDataUploaded={this.handleCsvDataUploaded}
+                            onError={err => {
+                                alert('Error Occurred\n\n' + err.reason + '\n\n Please contact @samthegeek on twitter for more help.')
+                            }}
+                            render={onChange => (
+                                <div>
+                                    <div style={{marginBottom: '20px'}}>
+                                        <p>If you want to specify the start of the report, such as to only include 2021, input 01-01-2021 below. Otherwise, leave it blank to include all data.</p>
+                                        Choose date: <input id="filterDate" type="date" />
+                                    </div>
+                                    <input id="file" name="file" className="inputfile" type="file" onChange={onChange} />
+                                    <p>Loading may take a moment... be patient</p>
+                                </div>
+                            )}
+                        />
+                    </div>
 
                 </Jumbotron>
 

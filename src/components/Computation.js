@@ -100,6 +100,31 @@ class Computation {
         return result
     }
 
+    static getArtistName(play, libraryIndex) {
+        // First, try to get artist name from the play record itself
+        if (varExists(play["Artist Name"]) && play["Artist Name"].length > 0) {
+            return play["Artist Name"];
+        }
+
+        // If no artist name in play record, try to get it from library
+        if (libraryIndex && varExists(play["Song Name"])) {
+            const normalizedSongName = play["Song Name"].toLowerCase().trim().replace(/\s+/g, ' ');
+            const libraryEntry = libraryIndex[normalizedSongName];
+            
+            if (libraryEntry && libraryEntry.tracks && libraryEntry.tracks.length > 0) {
+                // Get artist name from the first matching track
+                const track = libraryEntry.tracks[0];
+                const artistName = track["Artist Name"] || track["Artist"] || track["artist"];
+                if (varExists(artistName) && artistName.length > 0) {
+                    return artistName;
+                }
+            }
+        }
+
+        // Fall back to "Unknown Artist" if we can't find it
+        return "Unknown Artist";
+    }
+
     static isSamePlay(play, previousPlay) {
         if (previousPlay != null &&
             Computation.isPlay(previousPlay) && 
@@ -143,6 +168,12 @@ class Computation {
         let today = new Date().getFullYear();
         if (new Date().getMonth() < 5) {
             today = today - 1
+        }
+
+        // Build library index for artist lookup
+        let libraryIndex = null;
+        if (libraryTracks && Array.isArray(libraryTracks) && libraryTracks.length > 0) {
+            libraryIndex = TrackMatcher.buildLibraryIndex(libraryTracks);
         }
 
         // Perform track matching if library data is provided
@@ -228,12 +259,14 @@ class Computation {
 
             
 
-            if (varExists(play["Song Name"]) && varExists(play["Artist Name"]) && varExists(play["Play Duration Milliseconds"]) && varExists(play["Media Duration In Milliseconds"]) && varExists(play["Event End Timestamp"]) && varExists(play["UTC Offset In Seconds"])) {
+            if (varExists(play["Song Name"]) && varExists(play["Play Duration Milliseconds"]) && varExists(play["Media Duration In Milliseconds"]) && varExists(play["Event End Timestamp"]) && varExists(play["UTC Offset In Seconds"])) {
                 reasons[play["End Reason Type"]] = reasons[play["End Reason Type"]] + 1;
 
 
                 if (Computation.isPlay(play)) {
-                    const uniqueID = "'" + play["Song Name"] + "' by " + play["Artist Name"];
+                    // Get artist name from play data or library
+                    const artistName = Computation.getArtistName(play, libraryIndex);
+                    const uniqueID = "'" + play["Song Name"] + "' by " + artistName;
                     
                     if (Number(play["Play Duration Milliseconds"]) > 8000 /*&& (play["Event Type"] === "PLAY_END" || play["Event Type"] === "")*/) {
     
@@ -242,7 +275,7 @@ class Computation {
                                 plays: 0,
                                 time: 0,
                                 name: play["Song Name"],
-                                artist: play["Artist Name"],
+                                artist: artistName,
                                 missedTime: 0,
                                 excluded: excludedSongs.includes(uniqueID)
                             };
@@ -266,8 +299,8 @@ class Computation {
     
                         if (!songs[uniqueID].excluded) {
     
-                            if (artists[play["Artist Name"]] == null) {
-                                artists[play["Artist Name"]] = {
+                            if (artists[artistName] == null) {
+                                artists[artistName] = {
                                     plays: 0,
                                     time: 0,
                                     missedTime: 0
@@ -276,13 +309,13 @@ class Computation {
     
                             if (!Computation.isSamePlay(play, previousPlay)) {
                                 totals.totalPlays = totals.totalPlays + 1;
-                                artists[play["Artist Name"]].plays = artists[play["Artist Name"]].plays + 1;
+                                artists[artistName].plays = artists[artistName].plays + 1;
                             }
     
     
                             totals.totalTime = Number(totals.totalTime) + Number(play["Play Duration Milliseconds"]);
-                            artists[play["Artist Name"]].time = Number(artists[play["Artist Name"]].time) + Number(play["Play Duration Milliseconds"]);
-                            artists[play["Artist Name"]].missedTime = Number(artists[play["Artist Name"]].missedTime) + missedMilliseconds;
+                            artists[artistName].time = Number(artists[artistName].time) + Number(play["Play Duration Milliseconds"]);
+                            artists[artistName].missedTime = Number(artists[artistName].missedTime) + missedMilliseconds;
     
     
                             var date = new Date(play["Event End Timestamp"]);
@@ -338,7 +371,7 @@ class Computation {
                                     plays: 0,
                                     time: 0,
                                     name: play["Song Name"],
-                                    artist: play["Artist Name"],
+                                    artist: artistName,
                                     missedTime: 0
                                 };
                             }
@@ -353,8 +386,8 @@ class Computation {
     
     
                             if (today === yearID) {
-                                if (thisYear.artists[play["Artist Name"]] == null) {
-                                    thisYear.artists[play["Artist Name"]] = {
+                                if (thisYear.artists[artistName] == null) {
+                                    thisYear.artists[artistName] = {
                                         plays: 0,
                                         time: 0,
                                         missedTime: 0
@@ -363,13 +396,13 @@ class Computation {
         
                                 if (!Computation.isSamePlay(play, previousPlay)) {
                                     thisYear.totalPlays = thisYear.totalPlays + 1;
-                                    thisYear.artists[play["Artist Name"]].plays = thisYear.artists[play["Artist Name"]].plays + 1;
+                                    thisYear.artists[artistName].plays = thisYear.artists[artistName].plays + 1;
                                 }
         
         
                                 thisYear.totalTime = Number(thisYear.totalTime) + Number(play["Play Duration Milliseconds"]);
-                                thisYear.artists[play["Artist Name"]].time = Number(thisYear.artists[play["Artist Name"]].time) + Number(play["Play Duration Milliseconds"]);
-                                thisYear.artists[play["Artist Name"]].missedTime = Number(thisYear.artists[play["Artist Name"]].missedTime) + missedMilliseconds;
+                                thisYear.artists[artistName].time = Number(thisYear.artists[artistName].time) + Number(play["Play Duration Milliseconds"]);
+                                thisYear.artists[artistName].missedTime = Number(thisYear.artists[artistName].missedTime) + missedMilliseconds;
         
                             }
     
