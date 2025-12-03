@@ -69,11 +69,11 @@ describe('Missing Artist Name Handling', () => {
         }, null);
     });
 
-    test('should prefer artist name from CSV over library', (done) => {
+    test('should use artist name from library only (CSV has no artist info)', (done) => {
         const playData = [
             {
                 "Song Name": "Test Song",
-                "Artist Name": "CSV Artist", // Has artist name
+                // CSV has NO artist information
                 "Play Duration Milliseconds": "180000",
                 "Media Duration In Milliseconds": "200000",
                 "Event End Timestamp": "2023-01-15T14:30:00Z",
@@ -96,9 +96,9 @@ describe('Missing Artist Name Handling', () => {
             expect(results.songs.length).toBeGreaterThan(0);
             expect(results.artists.length).toBeGreaterThan(0);
             
-            // Should use CSV artist, not library
-            expect(results.artists[0].key).toBe('CSV Artist');
-            expect(results.songs[0].key).toBe("'Test Song' by CSV Artist");
+            // Should use library artist since CSV has no artist info
+            expect(results.artists[0].key).toBe('Library Artist');
+            expect(results.songs[0].key).toBe("'Test Song' by Library Artist");
             
             done();
         }, libraryData);
@@ -138,11 +138,11 @@ describe('Missing Artist Name Handling', () => {
         }, libraryData);
     });
 
-    test('should handle multiple plays with mixed artist data', (done) => {
+    test('should handle multiple plays with all artist data from library', (done) => {
         const playData = [
             {
-                "Song Name": "Song With Artist",
-                "Artist Name": "Known Artist",
+                "Song Name": "Song One",
+                // CSV has NO artist information
                 "Play Duration Milliseconds": "180000",
                 "Media Duration In Milliseconds": "200000",
                 "Event End Timestamp": "2023-01-15T14:30:00Z",
@@ -153,8 +153,8 @@ describe('Missing Artist Name Handling', () => {
                 "Media Type": "AUDIO"
             },
             {
-                "Song Name": "Song Without Artist",
-                "Artist Name": "",
+                "Song Name": "Song Two",
+                // CSV has NO artist information
                 "Play Duration Milliseconds": "180000",
                 "Media Duration In Milliseconds": "200000",
                 "Event End Timestamp": "2023-01-15T15:30:00Z",
@@ -168,8 +168,12 @@ describe('Missing Artist Name Handling', () => {
 
         const libraryData = [
             {
-                "Song Name": "Song Without Artist",
-                "Artist Name": "Library Artist"
+                "Song Name": "Song One",
+                "Artist Name": "Artist One"
+            },
+            {
+                "Song Name": "Song Two",
+                "Artist Name": "Artist Two"
             }
         ];
 
@@ -177,10 +181,10 @@ describe('Missing Artist Name Handling', () => {
             expect(results.songs.length).toBe(2);
             expect(results.artists.length).toBe(2);
             
-            // Check both artists are present
+            // Check both artists are present from library
             const artistNames = results.artists.map(a => a.key).sort();
-            expect(artistNames).toContain('Known Artist');
-            expect(artistNames).toContain('Library Artist');
+            expect(artistNames).toContain('Artist One');
+            expect(artistNames).toContain('Artist Two');
             
             done();
         }, libraryData);
@@ -214,6 +218,58 @@ describe('Missing Artist Name Handling', () => {
             
             // Should match despite case difference
             expect(results.artists[0].key).toBe('Library Artist');
+            
+            done();
+        }, libraryData);
+    });
+
+
+
+    test('should correctly detect paused plays without CSV artist data', (done) => {
+        // Test that isSamePlay works by song name when CSV has no artist info
+        const playData = [
+            {
+                "Song Name": "Paused Song",
+                // CSV has NO artist information
+                "Play Duration Milliseconds": "90000",
+                "Media Duration In Milliseconds": "200000",
+                "Event End Timestamp": "2023-01-15T14:30:00Z",
+                "Event Start Timestamp": "2023-01-15T14:28:30Z",
+                "Start Position In Milliseconds": "0",
+                "End Position In Milliseconds": "90000",
+                "UTC Offset In Seconds": "0",
+                "End Reason Type": "PLAYBACK_MANUALLY_PAUSED",
+                "Item Type": "SONG",
+                "Media Type": "AUDIO"
+            },
+            {
+                "Song Name": "Paused Song",
+                // CSV has NO artist information
+                "Play Duration Milliseconds": "110000",
+                "Media Duration In Milliseconds": "200000",
+                "Event End Timestamp": "2023-01-15T14:32:00Z",
+                "Event Start Timestamp": "2023-01-15T14:30:10Z",
+                "Start Position In Milliseconds": "90000",
+                "End Position In Milliseconds": "200000",
+                "UTC Offset In Seconds": "0",
+                "End Reason Type": "NATURAL_END_OF_TRACK",
+                "Item Type": "SONG",
+                "Media Type": "AUDIO"
+            }
+        ];
+
+        const libraryData = [
+            {
+                "Song Name": "Paused Song",
+                "Artist Name": "Test Artist"
+            }
+        ];
+
+        Computation.calculateTop(playData, [], (results) => {
+            // Should count as 1 play (paused and resumed), not 2
+            expect(results.songs.length).toBe(1);
+            expect(results.songs[0].value.plays).toBe(1);
+            expect(results.songs[0].key).toBe("'Paused Song' by Test Artist");
             
             done();
         }, libraryData);

@@ -173,6 +173,19 @@ class Banner extends Component {
                 }
 
                 let data = results.data;
+                
+                // Log CSV info and remind about library file
+                if (data.length > 0) {
+                    console.log('CSV data loaded:', data.length, 'records');
+                    
+                    if (!this.state.libraryData) {
+                        console.warn('⚠️ WARNING: No library file uploaded. Artist information will show as "Unknown Artist".');
+                        console.warn('📁 Please upload the "Apple Music Library Activity.json" file to see artist names.');
+                    } else {
+                        console.log('✅ Library loaded:', this.state.libraryData.length, 'tracks - artist names will be matched from library');
+                    }
+                }
+                
                 const filterDate = document.getElementById("filterDate").value;
 
                 if (filterDate.length > 1) {
@@ -206,8 +219,8 @@ class Banner extends Component {
                     <p>No data ever leaves your computer and all computation is done in the browser.</p>
                     
                     <div className="box" style={{backgroundColor: '#d1ecf1', borderColor: '#bee5eb', padding: '15px', marginBottom: '20px'}}>
-                        <h5>📁 Step 1: Upload Library (Optional but Recommended)</h5>
-                        <p>Upload your <strong>Apple Music Library Activity.json</strong> file to enrich play data with artist information.</p>
+                        <h5>📁 Step 1: Upload Library (REQUIRED for Artist Names)</h5>
+                        <p><strong>Important:</strong> The CSV file does not contain artist information. You must upload your <strong>Apple Music Library Activity.json</strong> file to see artist names. Without this file, all songs will show as "Unknown Artist".</p>
                         <input 
                             id="libraryFile" 
                             name="libraryFile" 
@@ -219,6 +232,11 @@ class Banner extends Component {
                         {this.state.libraryData && (
                             <p style={{color: 'green', marginTop: '10px'}}>
                                 ✅ Library loaded: {this.state.libraryData.length} tracks
+                            </p>
+                        )}
+                        {!this.state.libraryData && (
+                            <p style={{color: '#856404', marginTop: '10px', fontWeight: 'bold'}}>
+                                ⚠️ No library file uploaded - artist names will not be available
                             </p>
                         )}
                     </div>

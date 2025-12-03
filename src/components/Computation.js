@@ -13,6 +13,7 @@ function varExists(el) {
 class Computation {
 
     static monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    static _unknownArtistWarningLogged = false;
 
 
 
@@ -103,12 +104,8 @@ class Computation {
     }
 
     static getArtistName(play, libraryIndex) {
-        // First, try to get artist name from the play record itself
-        if (varExists(play["Artist Name"]) && play["Artist Name"].length > 0) {
-            return play["Artist Name"];
-        }
-
-        // If no artist name in play record, try to get it from library
+        // Artist information is NOT in the CSV - it must come from the library JSON
+        // Look up artist name from library based on song name
         if (libraryIndex && varExists(play["Song Name"])) {
             const normalizedSongName = play["Song Name"].toLowerCase().trim().replace(/\s+/g, ' ');
             const libraryEntry = libraryIndex[normalizedSongName];
@@ -123,16 +120,27 @@ class Computation {
             }
         }
 
-        // Fall back to "Unknown Artist" if we can't find it
+        // Fall back to "Unknown Artist" if we can't find it in the library
+        // Log a warning on the first occurrence to help with debugging
+        if (!Computation._unknownArtistWarningLogged) {
+            console.warn('Artist name not found in library for song:', play["Song Name"], '- Using "Unknown Artist" fallback. Make sure to upload the library JSON file.');
+            Computation._unknownArtistWarningLogged = true;
+        }
         return "Unknown Artist";
     }
 
     static isSamePlay(play, previousPlay) {
+        // Since CSV has no artist info, we compare by song name and position only.
+        // This is sufficient for detecting paused/resumed plays because:
+        // 1. We check exact position matching (End Position = Start Position)
+        // 2. We check the pause reason (PLAYBACK_MANUALLY_PAUSED)
+        // 3. These are consecutive records in time
+        // The combination of these factors makes false positives (different songs with same name)
+        // extremely unlikely in practice.
         if (previousPlay != null &&
             Computation.isPlay(previousPlay) && 
             Computation.isPlay(play) &&
             previousPlay["Song Name"] === play["Song Name"] &&
-            previousPlay["Artist Name"] === play["Artist Name"] &&
             previousPlay["End Position In Milliseconds"] === play["Start Position In Milliseconds"] &&
             previousPlay["End Reason Type"] === "PLAYBACK_MANUALLY_PAUSED") {
             return true;
@@ -142,11 +150,17 @@ class Computation {
     }
 
     static isSamePlayNext(play, nextPlay) {
+        // Since CSV has no artist info, we compare by song name and position only.
+        // This is sufficient for detecting paused/resumed plays because:
+        // 1. We check exact position matching (End Position = Start Position)
+        // 2. We check the pause reason (PLAYBACK_MANUALLY_PAUSED)
+        // 3. These are consecutive records in time
+        // The combination of these factors makes false positives (different songs with same name)
+        // extremely unlikely in practice.
         if (nextPlay != null &&
             Computation.isPlay(nextPlay) && 
             Computation.isPlay(play) &&
             nextPlay["Song Name"] === play["Song Name"] &&
-            nextPlay["Artist Name"] === play["Artist Name"] &&
             play["End Position In Milliseconds"] === nextPlay["Start Position In Milliseconds"] &&
             play["End Reason Type"] === "PLAYBACK_MANUALLY_PAUSED") {
             return true;
