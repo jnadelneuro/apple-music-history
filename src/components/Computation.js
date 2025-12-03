@@ -103,35 +103,9 @@ class Computation {
         return result
     }
 
-    static getArtistNameFromRecord(play) {
-        // Helper function to extract artist name from a play record
-        // without library lookup - used for comparing records
-        const possibleArtistColumns = [
-            "Artist Name",
-            "Artist",
-            "Container Artist Name",
-            "artist",
-            "artist_name"
-        ];
-
-        for (const columnName of possibleArtistColumns) {
-            if (varExists(play[columnName]) && play[columnName].length > 0) {
-                return play[columnName];
-            }
-        }
-
-        return null;
-    }
-
     static getArtistName(play, libraryIndex) {
-        // First, try to get artist name from the play record itself
-        // Check multiple possible column names in order of preference
-        const artistFromRecord = Computation.getArtistNameFromRecord(play);
-        if (artistFromRecord) {
-            return artistFromRecord;
-        }
-
-        // If no artist name in play record, try to get it from library
+        // Artist information is NOT in the CSV - it must come from the library JSON
+        // Look up artist name from library based on song name
         if (libraryIndex && varExists(play["Song Name"])) {
             const normalizedSongName = play["Song Name"].toLowerCase().trim().replace(/\s+/g, ' ');
             const libraryEntry = libraryIndex[normalizedSongName];
@@ -146,21 +120,22 @@ class Computation {
             }
         }
 
-        // Fall back to "Unknown Artist" if we can't find it
+        // Fall back to "Unknown Artist" if we can't find it in the library
         // Log a warning on the first occurrence to help with debugging
         if (!Computation._unknownArtistWarningLogged) {
-            console.warn('Artist name not found for song:', play["Song Name"], '- Using "Unknown Artist" fallback. Check that your CSV has an artist column or upload a library file.');
+            console.warn('Artist name not found in library for song:', play["Song Name"], '- Using "Unknown Artist" fallback. Make sure to upload the library JSON file.');
             Computation._unknownArtistWarningLogged = true;
         }
         return "Unknown Artist";
     }
 
     static isSamePlay(play, previousPlay) {
+        // Since CSV has no artist info, we compare by song name and position only
+        // This is sufficient for detecting paused/resumed plays
         if (previousPlay != null &&
             Computation.isPlay(previousPlay) && 
             Computation.isPlay(play) &&
             previousPlay["Song Name"] === play["Song Name"] &&
-            Computation.getArtistNameFromRecord(previousPlay) === Computation.getArtistNameFromRecord(play) &&
             previousPlay["End Position In Milliseconds"] === play["Start Position In Milliseconds"] &&
             previousPlay["End Reason Type"] === "PLAYBACK_MANUALLY_PAUSED") {
             return true;
@@ -170,11 +145,12 @@ class Computation {
     }
 
     static isSamePlayNext(play, nextPlay) {
+        // Since CSV has no artist info, we compare by song name and position only
+        // This is sufficient for detecting paused/resumed plays
         if (nextPlay != null &&
             Computation.isPlay(nextPlay) && 
             Computation.isPlay(play) &&
             nextPlay["Song Name"] === play["Song Name"] &&
-            Computation.getArtistNameFromRecord(nextPlay) === Computation.getArtistNameFromRecord(play) &&
             play["End Position In Milliseconds"] === nextPlay["Start Position In Milliseconds"] &&
             play["End Reason Type"] === "PLAYBACK_MANUALLY_PAUSED") {
             return true;
