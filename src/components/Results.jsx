@@ -137,24 +137,25 @@ class Results extends Component {
         }
 
 
-        let artistTotalCount = (this.state.artists.length > 8 ? 8 : this.state.artists.length);
+        // Exclude "Unknown Artist" from the artist list
+        const filteredArtists = this.state.artists.filter(artist => artist.key !== "Unknown Artist");
+        let artistTotalCount = (filteredArtists.length > 10 ? 10 : filteredArtists.length);
         var artistBoxes = [];
         for (let index = 0; index < artistTotalCount; index++) {
-            const artist = this.state.artists[index];
+            const artist = filteredArtists[index];
             const div = <div className="box year" key={artist.key}>
-                <div>
-                    <p style={{ marginBottom: 0 }}>Most played artist No.{index + 1}</p>
-                    <h1>{artist.key}</h1>
-                </div>
-                <div>
-                    <hr className="my-2" />
-                    <p className="lead">{numeral(artist.value.plays).format('0,0')} Plays</p>
-                    <p>{Computation.convertTime(artist.value.time)}</p>
-                </div>
+            <div>
+                <p style={{ marginBottom: 0 }}>Most played artist No.{index + 1}</p>
+                <h1>{artist.key}</h1>
+            </div>
+            <div>
+                <hr className="my-2" />
+                <p className="lead">{numeral(artist.value.plays).format('0,0')} Plays</p>
+                <p>{Computation.convertTime(artist.value.time)}</p>
+            </div>
             </div>
             artistBoxes.push(div);
         }
-
 
 
         var topSong = this.state.filteredSongs[0];

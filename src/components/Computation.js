@@ -104,31 +104,31 @@ class Computation {
     }
 
     static getArtistName(play, libraryIndex) {
-        // Artist information is NOT in the CSV - it must come from the library JSON
         // Look up artist name from library based on song name
         if (libraryIndex && varExists(play["Song Name"])) {
             const normalizedSongName = play["Song Name"].toLowerCase().trim().replace(/\s+/g, ' ');
+            
+            // Since we updated buildLibraryIndex, this lookup now handles 
+            // "For Free?" finding "For Free? (Interlude)" automatically.
             const libraryEntry = libraryIndex[normalizedSongName];
             
             if (libraryEntry && libraryEntry.tracks && libraryEntry.tracks.length > 0) {
-                // Get artist name from the first matching track
                 const track = libraryEntry.tracks[0];
-                const artistName = track["Artist Name"] || track["Artist"] || track["artist"];
+                // Check all possible keys for Artist
+                const artistName = track["Artist"] || track["Artist Name"] || track["artist"];
                 if (varExists(artistName) && artistName.length > 0) {
                     return artistName;
                 }
             }
         }
 
-        // Fall back to "Unknown Artist" if we can't find it in the library
-        // Log a warning on the first occurrence to help with debugging
+        // Fallback if not found
         if (!Computation._unknownArtistWarningLogged) {
-            console.warn('Artist name not found in library for song:', play["Song Name"], '- Using "Unknown Artist" fallback. Make sure to upload the library JSON file.');
+            console.warn('Artist name not found in library for song:', play["Song Name"]);
             Computation._unknownArtistWarningLogged = true;
         }
         return "Unknown Artist";
     }
-
     static isSamePlay(play, previousPlay) {
         // Since CSV has no artist info, we compare by song name and position only.
         // This is sufficient for detecting paused/resumed plays because:
@@ -180,7 +180,7 @@ class Computation {
     
 
     static calculateTop(data, excludedSongs, callback, libraryTracks = null) {
-
+        let unknownArtistTracks = []; // Add this tracking array
         let today = new Date().getFullYear();
         if (new Date().getMonth() < 5) {
             today = today - 1
@@ -266,7 +266,7 @@ class Computation {
         //     excludedSongs: [],
         //     hoursArray: heatmapData
         // })
-
+        
 
         var previousPlay;
 
@@ -282,6 +282,15 @@ class Computation {
                 if (Computation.isPlay(play)) {
                     // Get artist name from play data or library
                     const artistName = Computation.getArtistName(play, libraryIndex);
+                    if (artistName === "Unknown Artist") {
+                            unknownArtistTracks.push({
+                                songName: play["Song Name"],
+                                playDuration: play["Play Duration Milliseconds"],
+                                mediaDuration: play["Media Duration In Milliseconds"],
+                                playCount: play["Track Play Count"],
+                                timestamp: play["Event End Timestamp"]
+                            });
+                        }
                     const uniqueID = "'" + play["Song Name"] + "' by " + artistName;
                     
                     if (Number(play["Play Duration Milliseconds"]) > 8000 /*&& (play["Event Type"] === "PLAY_END" || play["Event Type"] === "")*/) {
@@ -513,7 +522,7 @@ class Computation {
             matchResults: matchResults
         }
 
-
+        console.log("Tracks with 'Unknown Artist':", unknownArtistTracks);
         callback(returnVal);
         console.log(returnVal);
 

@@ -34,31 +34,44 @@ class TrackMatcher {
      * @returns {Object} Index with song names as keys and track info as values
      */
     static buildLibraryIndex(libraryTracks) {
-        if (!libraryTracks || !Array.isArray(libraryTracks)) {
-            console.error('Invalid library tracks:', libraryTracks);
-            return {};
-        }
-
-        console.log('Apple Music Library Tracks:', libraryTracks);
-
         const libraryIndex = {};
 
-        // Iterate through the tracks to construct the index
+        if (!libraryTracks) return libraryIndex;
+
         libraryTracks.forEach(track => {
-            if (track["Content Type"] === "Song" && track["Title"] && track["Artist"]) {
-                const normalizedName = track["Title"].toLowerCase().trim().replace(/\s+/g, ' ');
-                if (!libraryIndex[normalizedName]) {
-                    libraryIndex[normalizedName] = { tracks: [track] };
-                } else {
-                    libraryIndex[normalizedName].tracks.push(track);
+            // 1. Get the title and artist
+            // (Adjust keys "Title"/"Song Name" based on your specific JSON format)
+            const title = track["Title"] || track["Song Name"];
+            
+            if (title) {
+                // 2. Create the standard normalized key
+                const normalizedName = title.toLowerCase().trim().replace(/\s+/g, ' ');
+                
+                // Helper to add to index
+                const addToIndex = (key) => {
+                    if (!libraryIndex[key]) {
+                        libraryIndex[key] = { tracks: [track] };
+                    } else {
+                        libraryIndex[key].tracks.push(track);
+                    }
+                };
+
+                // Add the standard key
+                addToIndex(normalizedName);
+
+                // 3. EDGE CASE FIX: Add a version WITHOUT parentheses
+                // If the title has parentheses, strip them and add that key too
+                if (normalizedName.includes('(') && normalizedName.includes(')')) {
+                    const strippedName = normalizedName.replace(/\s*\(.*?\)\s*/g, '').trim();
+                    if (strippedName !== normalizedName && strippedName.length > 0) {
+                        addToIndex(strippedName);
+                    }
                 }
             }
         });
 
-        console.log('Built Library Index:', libraryIndex);
         return libraryIndex;
     }
-
     /**
      * Matches a play record to library tracks
      * 
