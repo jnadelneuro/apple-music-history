@@ -185,17 +185,16 @@ class Banner extends Component {
                     );
                     if (artistColumns.length > 0) {
                         console.log('Artist columns found:', artistColumns);
+                        
+                        // Log sample artist data from first record
+                        const firstRecord = data[0];
+                        const sampleArtist = artistColumns.map(col => 
+                            `${col}: "${firstRecord[col] || '(empty)'}"`
+                        ).join(', ');
+                        console.log('Sample artist data:', sampleArtist);
                     } else {
                         console.warn('WARNING: No artist columns detected in CSV. Songs may show as "Unknown Artist".');
                     }
-                    
-                    // Log a sample record for debugging
-                    console.log('Sample CSV record (first entry):', {
-                        'Song Name': data[0]['Song Name'],
-                        'Artist Name': data[0]['Artist Name'],
-                        'Artist': data[0]['Artist'],
-                        'Container Artist Name': data[0]['Container Artist Name']
-                    });
                 }
                 
                 const filterDate = document.getElementById("filterDate").value;

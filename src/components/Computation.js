@@ -13,6 +13,7 @@ function varExists(el) {
 class Computation {
 
     static monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    static _unknownArtistWarningLogged = false;
 
 
 
