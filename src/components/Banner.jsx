@@ -1,7 +1,10 @@
 import React, { Component } from 'react';
 import { Jumbotron } from 'reactstrap';
-import CsvParse from '@vtex/react-csv-parse';
+import Papa from 'papaparse';
 
+// Legacy keys list - no longer used as we now parse CSV headers dynamically
+// Kept for reference of expected Apple Music CSV format
+/*
 const keys = [
     "Album Name",
     "Apple ID Number",
@@ -123,6 +126,7 @@ const keys = [
     "Vocal Attenuation Duration",
     "Vocal Attenuation Model ID"
 ];
+*/
 
 class Banner extends Component {
 
@@ -154,21 +158,41 @@ class Banner extends Component {
         reader.readAsText(file);
     }
 
-    handleCsvDataUploaded = (data) => {
-        var filterDate = document.getElementById("filterDate").value;
+    handleCsvUpload = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
 
-        if (filterDate.length > 1) {
-            var tempArray = [];
-            for(var i = 0; i < data.length; i++) {
-                if (data[i]["Event End Timestamp"] >= filterDate + "T00:00:00" || data[i]["Event Start Timestamp"] >= filterDate + "T00:00:00") {
-                    tempArray.push(data[i]);                                        
+        Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: (results) => {
+                if (results.errors.length > 0) {
+                    console.error('CSV parsing errors:', results.errors);
+                    alert('Error parsing CSV file:\n\n' + results.errors[0].message + '\n\nPlease make sure you uploaded a valid CSV file.');
+                    return;
                 }
-            }
-            data = tempArray;
-        }
 
-        // Pass both CSV data and library data to the parent
-        this.props.dataResponseHandler(data, this.state.libraryData);
+                let data = results.data;
+                const filterDate = document.getElementById("filterDate").value;
+
+                if (filterDate.length > 1) {
+                    var tempArray = [];
+                    for(var i = 0; i < data.length; i++) {
+                        if (data[i]["Event End Timestamp"] >= filterDate + "T00:00:00" || data[i]["Event Start Timestamp"] >= filterDate + "T00:00:00") {
+                            tempArray.push(data[i]);                                        
+                        }
+                    }
+                    data = tempArray;
+                }
+
+                console.log('CSV data loaded:', data.length, 'records');
+                // Pass both CSV data and library data to the parent
+                this.props.dataResponseHandler(data, this.state.libraryData);
+            },
+            error: (error) => {
+                alert('Error reading CSV file:\n\n' + error.message + '\n\nPlease make sure you uploaded a valid CSV file.');
+            }
+        });
     }
 
     render() {
@@ -202,23 +226,21 @@ class Banner extends Component {
                     <div className="box" style={{backgroundColor: '#fff3cd', borderColor: '#ffc107', padding: '15px', marginBottom: '20px'}}>
                         <h5>📊 Step 2: Upload Play Activity (Required)</h5>
                         <p>Upload your <strong>Apple Music Play Activity.csv</strong> file.</p>
-                        <CsvParse
-                            keys={keys}
-                            onDataUploaded={this.handleCsvDataUploaded}
-                            onError={err => {
-                                alert('Error Occurred\n\n' + err.reason + '\n\n Please contact @samthegeek on twitter for more help.')
-                            }}
-                            render={onChange => (
-                                <div>
-                                    <div style={{marginBottom: '20px'}}>
-                                        <p>If you want to specify the start of the report, such as to only include 2021, input 01-01-2021 below. Otherwise, leave it blank to include all data.</p>
-                                        Choose date: <input id="filterDate" type="date" />
-                                    </div>
-                                    <input id="file" name="file" className="inputfile" type="file" onChange={onChange} />
-                                    <p>Loading may take a moment... be patient</p>
-                                </div>
-                            )}
-                        />
+                        <div>
+                            <div style={{marginBottom: '20px'}}>
+                                <p>If you want to specify the start of the report, such as to only include 2021, input 01-01-2021 below. Otherwise, leave it blank to include all data.</p>
+                                Choose date: <input id="filterDate" type="date" />
+                            </div>
+                            <input 
+                                id="file" 
+                                name="file" 
+                                className="inputfile" 
+                                type="file" 
+                                accept=".csv"
+                                onChange={this.handleCsvUpload} 
+                            />
+                            <p>Loading may take a moment... be patient</p>
+                        </div>
                     </div>
 
                 </Jumbotron>
