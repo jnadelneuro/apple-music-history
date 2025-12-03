@@ -102,21 +102,32 @@ class Computation {
         return result
     }
 
-    static getArtistName(play, libraryIndex) {
-        // First, try to get artist name from the play record itself
-        // Check multiple possible column names in order of preference
+    static getArtistNameFromRecord(play) {
+        // Helper function to extract artist name from a play record
+        // without library lookup - used for comparing records
         const possibleArtistColumns = [
-            "Artist Name",           // Standard column name
-            "Artist",                // Alternative column name
-            "Container Artist Name", // Container metadata
-            "artist",                // Lowercase variant
-            "artist_name"            // Snake case variant
+            "Artist Name",
+            "Artist",
+            "Container Artist Name",
+            "artist",
+            "artist_name"
         ];
 
         for (const columnName of possibleArtistColumns) {
             if (varExists(play[columnName]) && play[columnName].length > 0) {
                 return play[columnName];
             }
+        }
+
+        return null;
+    }
+
+    static getArtistName(play, libraryIndex) {
+        // First, try to get artist name from the play record itself
+        // Check multiple possible column names in order of preference
+        const artistFromRecord = Computation.getArtistNameFromRecord(play);
+        if (artistFromRecord) {
+            return artistFromRecord;
         }
 
         // If no artist name in play record, try to get it from library
@@ -148,7 +159,7 @@ class Computation {
             Computation.isPlay(previousPlay) && 
             Computation.isPlay(play) &&
             previousPlay["Song Name"] === play["Song Name"] &&
-            previousPlay["Artist Name"] === play["Artist Name"] &&
+            Computation.getArtistNameFromRecord(previousPlay) === Computation.getArtistNameFromRecord(play) &&
             previousPlay["End Position In Milliseconds"] === play["Start Position In Milliseconds"] &&
             previousPlay["End Reason Type"] === "PLAYBACK_MANUALLY_PAUSED") {
             return true;
@@ -162,7 +173,7 @@ class Computation {
             Computation.isPlay(nextPlay) && 
             Computation.isPlay(play) &&
             nextPlay["Song Name"] === play["Song Name"] &&
-            nextPlay["Artist Name"] === play["Artist Name"] &&
+            Computation.getArtistNameFromRecord(nextPlay) === Computation.getArtistNameFromRecord(play) &&
             play["End Position In Milliseconds"] === nextPlay["Start Position In Milliseconds"] &&
             play["End Reason Type"] === "PLAYBACK_MANUALLY_PAUSED") {
             return true;

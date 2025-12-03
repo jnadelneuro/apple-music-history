@@ -303,4 +303,47 @@ describe('Missing Artist Name Handling', () => {
             done();
         }, null);
     });
+
+    test('should correctly detect paused plays with alternative artist column', (done) => {
+        // Test that isSamePlay correctly uses alternative artist columns
+        const playData = [
+            {
+                "Song Name": "Paused Song",
+                "Artist": "Test Artist", // Using "Artist" instead of "Artist Name"
+                "Play Duration Milliseconds": "90000",
+                "Media Duration In Milliseconds": "200000",
+                "Event End Timestamp": "2023-01-15T14:30:00Z",
+                "Event Start Timestamp": "2023-01-15T14:28:30Z",
+                "Start Position In Milliseconds": "0",
+                "End Position In Milliseconds": "90000",
+                "UTC Offset In Seconds": "0",
+                "End Reason Type": "PLAYBACK_MANUALLY_PAUSED",
+                "Item Type": "SONG",
+                "Media Type": "AUDIO"
+            },
+            {
+                "Song Name": "Paused Song",
+                "Artist": "Test Artist",
+                "Play Duration Milliseconds": "110000",
+                "Media Duration In Milliseconds": "200000",
+                "Event End Timestamp": "2023-01-15T14:32:00Z",
+                "Event Start Timestamp": "2023-01-15T14:30:10Z",
+                "Start Position In Milliseconds": "90000",
+                "End Position In Milliseconds": "200000",
+                "UTC Offset In Seconds": "0",
+                "End Reason Type": "NATURAL_END_OF_TRACK",
+                "Item Type": "SONG",
+                "Media Type": "AUDIO"
+            }
+        ];
+
+        Computation.calculateTop(playData, [], (results) => {
+            // Should count as 1 play (paused and resumed), not 2
+            expect(results.songs.length).toBe(1);
+            expect(results.songs[0].value.plays).toBe(1);
+            expect(results.songs[0].key).toBe("'Paused Song' by Test Artist");
+            
+            done();
+        }, null);
+    });
 });
