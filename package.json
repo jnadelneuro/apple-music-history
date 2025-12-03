@@ -24,7 +24,7 @@
     "numeral": "^2.0.6",
     "react": "^17.0.2",
     "react-calendar-heatmap": "^1.8.1",
-    "react-chartjs": "^1.2.0",
+    "react-chartjs-2": "^2.11.2",
     "react-dom": "^17.0.2",
     "react-file-reader": "^1.1.4",
     "react-heatmap-grid": "^0.5.3",
