@@ -104,8 +104,19 @@ class Computation {
 
     static getArtistName(play, libraryIndex) {
         // First, try to get artist name from the play record itself
-        if (varExists(play["Artist Name"]) && play["Artist Name"].length > 0) {
-            return play["Artist Name"];
+        // Check multiple possible column names in order of preference
+        const possibleArtistColumns = [
+            "Artist Name",           // Standard column name
+            "Artist",                // Alternative column name
+            "Container Artist Name", // Container metadata
+            "artist",                // Lowercase variant
+            "artist_name"            // Snake case variant
+        ];
+
+        for (const columnName of possibleArtistColumns) {
+            if (varExists(play[columnName]) && play[columnName].length > 0) {
+                return play[columnName];
+            }
         }
 
         // If no artist name in play record, try to get it from library
