@@ -1,9 +1,7 @@
 
 import React, { Component } from 'react';
 import Computation from "./Computation";
-
-
-var LineChart = require("react-chartjs").Line;
+import { Line } from 'react-chartjs-2';
 
 class MonthChart extends Component {
 
@@ -12,21 +10,45 @@ class MonthChart extends Component {
         this.state = {
             months: props.months
         };
+        this.chartRef = React.createRef();
     }
 
     componentWillReceiveProps(nextProps) {
         this.setState({ months: nextProps.months});
     }
 
+    componentWillUnmount() {
+        // Properly destroy chart instance on unmount to prevent memory leaks
+        if (this.chartRef.current && this.chartRef.current.chartInstance) {
+            this.chartRef.current.chartInstance.destroy();
+        }
+    }
 
     render() {
-
-        var linechart = <LineChart data={Computation.convetrData(this.state.months)} width="600" height="300" options={{ bezierCurve: true, bezierCurveTension: 0.3, pointDot: false }} />
-
+        const chartData = Computation.convetrData(this.state.months);
+        const options = {
+            responsive: true,
+            maintainAspectRatio: true,
+            elements: {
+                line: {
+                    tension: 0.3 // bezierCurveTension equivalent
+                },
+                point: {
+                    radius: 0 // pointDot: false equivalent
+                }
+            },
+            scales: {
+                yAxes: [{
+                    ticks: {
+                        beginAtZero: true
+                    }
+                }]
+            }
+        };
 
         return (<div className="box linechart">
             <h3>Playing Time by Month</h3>
-            {linechart}
+            <Line ref={this.chartRef} data={chartData} options={options} />
             <p>
                 Orange line: hours playing // Green line: hours 'skipped'
         </p>
