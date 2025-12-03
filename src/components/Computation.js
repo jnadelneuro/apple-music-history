@@ -135,6 +135,11 @@ class Computation {
         }
 
         // Fall back to "Unknown Artist" if we can't find it
+        // Log a warning on the first occurrence to help with debugging
+        if (!Computation._unknownArtistWarningLogged) {
+            console.warn('Artist name not found for song:', play["Song Name"], '- Using "Unknown Artist" fallback. Check that your CSV has an artist column or upload a library file.');
+            Computation._unknownArtistWarningLogged = true;
+        }
         return "Unknown Artist";
     }
 

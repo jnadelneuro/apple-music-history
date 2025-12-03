@@ -173,6 +173,31 @@ class Banner extends Component {
                 }
 
                 let data = results.data;
+                
+                // Log detected CSV columns for debugging
+                if (data.length > 0) {
+                    const columns = Object.keys(data[0]);
+                    console.log('CSV columns detected:', columns.length);
+                    
+                    // Check for artist-related columns
+                    const artistColumns = columns.filter(col => 
+                        col.toLowerCase().includes('artist')
+                    );
+                    if (artistColumns.length > 0) {
+                        console.log('Artist columns found:', artistColumns);
+                    } else {
+                        console.warn('WARNING: No artist columns detected in CSV. Songs may show as "Unknown Artist".');
+                    }
+                    
+                    // Log a sample record for debugging
+                    console.log('Sample CSV record (first entry):', {
+                        'Song Name': data[0]['Song Name'],
+                        'Artist Name': data[0]['Artist Name'],
+                        'Artist': data[0]['Artist'],
+                        'Container Artist Name': data[0]['Container Artist Name']
+                    });
+                }
+                
                 const filterDate = document.getElementById("filterDate").value;
 
                 if (filterDate.length > 1) {
