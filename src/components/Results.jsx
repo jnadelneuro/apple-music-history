@@ -43,7 +43,8 @@ class Results extends Component {
                     filteredSongs: results.filteredSongs,
                     excludedSongs: results.excludedSongs,
                     hoursArray: results.hoursArray,
-                    thisYear: results.thisYear
+                    thisYear: results.thisYear,
+                    matchResults: results.matchResults
                 });
             });
         }, 0);
@@ -75,7 +76,8 @@ class Results extends Component {
                     filteredSongs: results.filteredSongs,
                     excludedSongs: results.excludedSongs,
                     hoursArray: results.hoursArray,
-                    thisYear: results.thisYear
+                    thisYear: results.thisYear,
+                    matchResults: results.matchResults
                 });
                 
             });
@@ -100,7 +102,8 @@ class Results extends Component {
                     filteredSongs: results.filteredSongs,
                     excludedSongs: results.excludedSongs,
                     hoursArray: results.hoursArray,
-                    thisYear: results.thisYear
+                    thisYear: results.thisYear,
+                    matchResults: results.matchResults
                 });
             });
         }, 0);
@@ -201,7 +204,29 @@ class Results extends Component {
 
                     {topSongBox}
 
-                    
+                    {this.state.matchResults && this.state.matchResults.statistics.uncertain > 0 &&
+                        <div className="box" style={{backgroundColor: '#fff3cd', borderColor: '#ffc107'}}>
+                            <h3>⚠️ Library Match Information</h3>
+                            <p>
+                                <strong>{this.state.matchResults.statistics.uncertain}</strong> plays matched songs with multiple versions in your library. 
+                                These matches may be uncertain as the same song name appears 2 or more times in your library.
+                            </p>
+                            {this.state.matchResults.uncertainSongs && this.state.matchResults.uncertainSongs.length > 0 && 
+                                this.state.matchResults.uncertainSongs.length <= 20 && (
+                                <div>
+                                    <strong>Songs with multiple library versions:</strong>
+                                    <ul style={{columnCount: this.state.matchResults.uncertainSongs.length > 10 ? 2 : 1}}>
+                                        {this.state.matchResults.uncertainSongs.map((song, idx) => (
+                                            <li key={idx}>{song}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                            {this.state.matchResults.uncertainSongs && this.state.matchResults.uncertainSongs.length > 20 && (
+                                <p><em>{this.state.matchResults.uncertainSongs.length} unique songs with multiple library versions</em></p>
+                            )}
+                        </div>
+                    }
 
                     <TopYears years={this.state.years} />
                     <TotalsBoxes totals={this.state.totals} songs={this.state.songs.length} artists={this.state.artists.length} day={this.state.days[0]} />

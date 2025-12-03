@@ -9,6 +9,22 @@ Client React app to get info from your apple music history
 
 Read more [on Pat Murray's site](https://patmurray.co/projects/apple-music-analyser/)
 
+## Features
+
+- 📊 Analyze your Apple Music play history from CSV exports
+- 🎵 **NEW: Track Matching** - Match plays to library tracks and identify songs with multiple versions
+- 📈 Detailed statistics on plays, artists, and listening patterns
+- 📅 Calendar heatmaps and time-based analysis
+- 🔒 Privacy-focused: All processing happens in your browser
+
+### Track Matching (New!)
+
+The app now includes track matching functionality that:
+- Matches play activity to your Apple Music library by song name
+- Flags **uncertain matches** when a song name appears **2 or more times** in your library
+- Helps identify different versions (remasters, live recordings, etc.)
+- See [TRACK_MATCHING.md](TRACK_MATCHING.md) for detailed documentation
+
 ## Using
 
 Follow [this guide from MacRumors](https://www.macrumors.com/2018/11/29/web-app-apple-music-history/) on how to download your data and use the site

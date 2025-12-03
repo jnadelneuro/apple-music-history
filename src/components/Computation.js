@@ -1,4 +1,5 @@
 import moment from 'moment';
+import TrackMatcher from './TrackMatcher';
 // import {timestamp} from 'moment-timezone';
 
 function varExists(el) { 
@@ -137,11 +138,17 @@ class Computation {
 
     
 
-    static calculateTop(data, excludedSongs, callback) {
+    static calculateTop(data, excludedSongs, callback, libraryTracks = null) {
 
         let today = new Date().getFullYear();
         if (new Date().getMonth() < 5) {
             today = today - 1
+        }
+
+        // Perform track matching if library data is provided
+        let matchResults = null;
+        if (libraryTracks && Array.isArray(libraryTracks) && libraryTracks.length > 0) {
+            matchResults = TrackMatcher.matchPlayActivity(data, libraryTracks);
         }
 
         var songs = {};
@@ -453,7 +460,8 @@ class Computation {
             filteredSongs: filteredSongs,
             excludedSongs: excludedSongs,
             hoursArray: heatmapData,
-            thisYear: thisYearResult
+            thisYear: thisYearResult,
+            matchResults: matchResults
         }
 
 
