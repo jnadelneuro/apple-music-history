@@ -34,40 +34,29 @@ class TrackMatcher {
      * @returns {Object} Index with song names as keys and track info as values
      */
     static buildLibraryIndex(libraryTracks) {
-        const index = {};
-        
-        if (!Array.isArray(libraryTracks)) {
-            return index;
+        if (!libraryTracks || !Array.isArray(libraryTracks)) {
+            console.error('Invalid library tracks:', libraryTracks);
+            return {};
         }
 
-        for (const track of libraryTracks) {
-            // Handle different possible property names in the library JSON
-            const songName = track['Song Name'] || track['Name'] || track.name;
-            
-            if (!songName || songName.length === 0) {
-                continue;
+        console.log('Apple Music Library Tracks:', libraryTracks);
+
+        const libraryIndex = {};
+
+        // Iterate through the tracks to construct the index
+        libraryTracks.forEach(track => {
+            if (track["Content Type"] === "Song" && track["Title"] && track["Artist"]) {
+                const normalizedName = track["Title"].toLowerCase().trim().replace(/\s+/g, ' ');
+                if (!libraryIndex[normalizedName]) {
+                    libraryIndex[normalizedName] = { tracks: [track] };
+                } else {
+                    libraryIndex[normalizedName].tracks.push(track);
+                }
             }
+        });
 
-            const normalizedName = this.normalizeSongName(songName);
-            
-            if (!normalizedName) {
-                continue;
-            }
-
-            if (!index[normalizedName]) {
-                index[normalizedName] = {
-                    originalNames: [],
-                    tracks: [],
-                    count: 0
-                };
-            }
-
-            index[normalizedName].originalNames.push(songName);
-            index[normalizedName].tracks.push(track);
-            index[normalizedName].count++;
-        }
-
-        return index;
+        console.log('Built Library Index:', libraryIndex);
+        return libraryIndex;
     }
 
     /**

@@ -180,7 +180,7 @@ class Banner extends Component {
                     
                     if (!this.state.libraryData) {
                         console.warn('⚠️ WARNING: No library file uploaded. Artist information will show as "Unknown Artist".');
-                        console.warn('📁 Please upload the "Apple Music Library Activity.json" file to see artist names.');
+                        console.warn('📁 Please upload the "Apple Music Library Tracks.json" file to see artist names.');
                     } else {
                         console.log('✅ Library loaded:', this.state.libraryData.length, 'tracks - artist names will be matched from library');
                     }
