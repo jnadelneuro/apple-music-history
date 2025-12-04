@@ -262,10 +262,13 @@ class Results extends Component {
 
                     <TopYears years={this.state.years} />
                     <TotalsBoxes totals={this.state.totals} songs={this.state.songs.length} artists={this.state.artists.length} day={this.state.days[0]} />
+                    
+                    <h2 className="section-heading">Top Artists</h2>
                     <div className="years artists">
                         {artistBoxes}
                     </div>
 
+                    <h2 className="section-heading section-divider">Top Albums</h2>
                     <div className="years artists">
                         {albumBoxes}
                     </div>
@@ -324,17 +327,17 @@ class Results extends Component {
                         </div>
                     </div>
 
-                    <div className="box">
+                    <div className="box major-section-separator">
                         <h1>Top Songs by Year</h1>
                         <YearsTopSongs years={this.state.years} />
                     </div>
 
-                    <div className="box">
+                    <div className="box major-section-separator">
                         <h1>Top Artists by Year</h1>
                         <YearsTopArtists yearArtists={this.state.yearArtists} />
                     </div>
 
-                    <div className="box">
+                    <div className="box major-section-separator">
                         <h1>Top Albums by Year</h1>
                         <YearsTopAlbums yearAlbums={this.state.yearAlbums} />
                     </div>
