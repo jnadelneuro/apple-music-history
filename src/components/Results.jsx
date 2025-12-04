@@ -13,6 +13,7 @@ import TopYears from './TopYears';
 import MonthChart from './MonthChart';
 import YearsTopSongs from './YearsTopSongs';
 import YearsTopArtists from './YearsTopArtists';
+import YearsTopAlbums from './YearsTopAlbums';
 import TotalsBoxes from './TotalsBoxes';
 import AllSongsTable from './AllSongsTable';
 import TopSongBox from './TopSongBox';
@@ -41,7 +42,9 @@ class Results extends Component {
                     data: this.state.data,
                     years: results.years,
                     yearArtists: results.yearArtists,
+                    yearAlbums: results.yearAlbums,
                     artists: results.artists,
+                    albums: results.albums,
                     totals: results.totals,
                     filteredSongs: results.filteredSongs,
                     excludedSongs: results.excludedSongs,
@@ -75,7 +78,9 @@ class Results extends Component {
                     data: this.state.data,
                     years: results.years,
                     yearArtists: results.yearArtists,
+                    yearAlbums: results.yearAlbums,
                     artists: results.artists,
+                    albums: results.albums,
                     totals: results.totals,
                     filteredSongs: results.filteredSongs,
                     excludedSongs: results.excludedSongs,
@@ -102,7 +107,9 @@ class Results extends Component {
                     data: this.state.data,
                     years: results.years,
                     yearArtists: results.yearArtists,
+                    yearAlbums: results.yearAlbums,
                     artists: results.artists,
+                    albums: results.albums,
                     totals: results.totals,
                     filteredSongs: results.filteredSongs,
                     excludedSongs: results.excludedSongs,
@@ -159,6 +166,25 @@ class Results extends Component {
             </div>
             </div>
             artistBoxes.push(div);
+        }
+
+        // Create album boxes similar to artist boxes
+        let albumTotalCount = (this.state.albums.length > 10 ? 10 : this.state.albums.length);
+        var albumBoxes = [];
+        for (let index = 0; index < albumTotalCount; index++) {
+            const album = this.state.albums[index];
+            const div = <div className="box year" key={album.key}>
+            <div>
+                <p style={{ marginBottom: 0 }}>Most played album No.{index + 1}</p>
+                <h1>{album.key}</h1>
+            </div>
+            <div>
+                <hr className="my-2" />
+                <p className="lead">{numeral(album.value.plays).format('0,0')} Plays</p>
+                <p>{Computation.convertTime(album.value.time)}</p>
+            </div>
+            </div>
+            albumBoxes.push(div);
         }
 
 
@@ -240,6 +266,10 @@ class Results extends Component {
                         {artistBoxes}
                     </div>
 
+                    <div className="years artists">
+                        {albumBoxes}
+                    </div>
+
                     {this.state.thisYear.totalPlays > 1 &&
                         <Wrapped year={this.state.thisYear} songs={this.state.thisYear.songs}/>
                     }
@@ -302,6 +332,11 @@ class Results extends Component {
                     <div className="box">
                         <h1>Top Artists by Year</h1>
                         <YearsTopArtists yearArtists={this.state.yearArtists} />
+                    </div>
+
+                    <div className="box">
+                        <h1>Top Albums by Year</h1>
+                        <YearsTopAlbums yearAlbums={this.state.yearAlbums} />
                     </div>
 
                     <ReasonsBox reasons={this.state.reasons} />
