@@ -3,3 +3,23 @@
     background-image: none;
     /* Removed background-image: url('/background.jpg'); */
 }
+
+/* Major section separator for year sections */
+.major-section-separator {
+    border-top: 3px solid #dee2e6;
+    margin-top: 40px;
+    padding-top: 40px;
+}
+
+/* Heading for top artists/albums sections */
+.section-heading {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 20px;
+    margin-top: 30px;
+}
+
+/* Separation between artist and album sections */
+.section-divider {
+    margin-top: 50px;
+}
