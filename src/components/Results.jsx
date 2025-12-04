@@ -12,6 +12,7 @@ import ReasonsBox from './ReasonsBox';
 import TopYears from './TopYears';
 import MonthChart from './MonthChart';
 import YearsTopSongs from './YearsTopSongs';
+import YearsTopArtists from './YearsTopArtists';
 import TotalsBoxes from './TotalsBoxes';
 import AllSongsTable from './AllSongsTable';
 import TopSongBox from './TopSongBox';
@@ -39,6 +40,7 @@ class Results extends Component {
                     reasons: results.reasons,
                     data: this.state.data,
                     years: results.years,
+                    yearArtists: results.yearArtists,
                     artists: results.artists,
                     totals: results.totals,
                     filteredSongs: results.filteredSongs,
@@ -72,6 +74,7 @@ class Results extends Component {
                     reasons: results.reasons,
                     data: this.state.data,
                     years: results.years,
+                    yearArtists: results.yearArtists,
                     artists: results.artists,
                     totals: results.totals,
                     filteredSongs: results.filteredSongs,
@@ -98,6 +101,7 @@ class Results extends Component {
                     reasons: results.reasons,
                     data: this.state.data,
                     years: results.years,
+                    yearArtists: results.yearArtists,
                     artists: results.artists,
                     totals: results.totals,
                     filteredSongs: results.filteredSongs,
@@ -291,6 +295,8 @@ class Results extends Component {
                     </div>
 
                     <YearsTopSongs years={this.state.years} />
+
+                    <YearsTopArtists yearArtists={this.state.yearArtists} />
 
                     <ReasonsBox reasons={this.state.reasons} />
 
