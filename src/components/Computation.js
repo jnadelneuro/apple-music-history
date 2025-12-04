@@ -107,26 +107,127 @@ class Computation {
         // Look up artist name from library based on song name
         if (libraryIndex && varExists(play["Song Name"])) {
             const normalizedSongName = play["Song Name"].toLowerCase().trim().replace(/\s+/g, ' ');
-            
+
+            if (play["Song Name"] === "That Funny Feeling") {
+            // Place breakpoint here for debugging - no match found in library
+                debugger;
+            }
             // Since we updated buildLibraryIndex, this lookup now handles 
             // "For Free?" finding "For Free? (Interlude)" automatically.
             const libraryEntry = libraryIndex[normalizedSongName];
             
             if (libraryEntry && libraryEntry.tracks && libraryEntry.tracks.length > 0) {
-                const track = libraryEntry.tracks[0];
-                // Check all possible keys for Artist
-                const artistName = track["Artist"] || track["Artist Name"] || track["artist"];
-                if (varExists(artistName) && artistName.length > 0) {
-                    return artistName;
+                const tracks = libraryEntry.tracks;
+                
+                // If only one match, use it directly
+                if (tracks.length === 1) {
+                    const artistName = tracks[0]["Artist"] || tracks[0]["Artist Name"] || tracks[0]["artist"];
+                    if (varExists(artistName) && artistName.length > 0) {
+                        return artistName;
+                    }
+                } else {
+                    // Multiple matches - first check if all tracks have the same artist
+                    const firstArtist = tracks[0]["Artist"] || tracks[0]["Artist Name"] || tracks[0]["artist"];
+                    if (varExists(firstArtist) && firstArtist.length > 0) {
+                        const allSameArtist = tracks.every(track => {
+                            const artistName = track["Artist"] || track["Artist Name"] || track["artist"];
+                            return artistName === firstArtist;
+                        });
+                        
+                        if (allSameArtist) {
+                            return firstArtist;
+                        }
+                        
+                        // Check if one artist name is contained within others
+                        const artistNames = tracks
+                            .map(track => track["Artist"] || track["Artist Name"] || track["artist"])
+                            .filter(name => varExists(name) && name.length > 0);
+                        
+                        // Find the shortest artist name that is contained in all others
+                        const sortedByLength = [...artistNames].sort((a, b) => a.length - b.length);
+                        for (const shortArtist of sortedByLength) {
+                            const shortNormalized = shortArtist.toLowerCase().trim();
+                            const allContain = artistNames.every(name => 
+                                name.toLowerCase().trim().includes(shortNormalized)
+                            );
+                            if (allContain) {
+                                return shortArtist;
+                            }
+                        }
+                    }
+
+                    
+                    // Different artists - try to find one with matching album
+                    const playAlbum = play["Album Name"];
+                    if (varExists(playAlbum)) {
+                        const normalizedPlayAlbum = playAlbum.toLowerCase().trim().replace(/\s+/g, ' ');
+                        
+                        for (const track of tracks) {
+                            const trackAlbum = track["Album"] || track["Album Name"] || track["album"];
+                            if (varExists(trackAlbum)) {
+                                const normalizedTrackAlbum = trackAlbum.toLowerCase().trim().replace(/\s+/g, ' ');
+                                
+                                // Specific edge case: Hamilton album name variations
+                                const isHamiltonMatch = (a, b) => {
+                                    const hamiltonCSV = "hamilton: an american musical (original broadway cast recording)";
+                                    const hamiltonJSON = "hamilton (original broadway cast recording)";
+                                    return (a === hamiltonCSV && b === hamiltonJSON) || 
+                                           (a === hamiltonJSON && b === hamiltonCSV);
+                                };
+                                
+                                // Check if albums are identical except for at most one character difference
+                                const isAlmostIdentical = (a, b) => {
+                                    if (a === b) return true;
+                                    
+                                    // Compare without spaces
+                                    const aNoSpaces = a.replace(/\s+/g, '');
+                                    const bNoSpaces = b.replace(/\s+/g, '');
+                                    if (aNoSpaces === bNoSpaces) return true;
+                                    
+                                    if (Math.abs(a.length - b.length) > 1) return false;
+                                    
+                                    let differences = 0;
+                                    let i = 0, j = 0;
+                                    while (i < a.length && j < b.length) {
+                                        if (a[i] !== b[j]) {
+                                            differences++;
+                                            if (differences > 1) return false;
+                                            if (a.length > b.length) i++;
+                                            else if (b.length > a.length) j++;
+                                            else { i++; j++; }
+                                        } else {
+                                            i++;
+                                            j++;
+                                        }
+                                    }
+                                    return differences + (a.length - i) + (b.length - j) <= 1;
+                                };
+                                
+                                if (isAlmostIdentical(normalizedTrackAlbum, normalizedPlayAlbum) || 
+                                    isHamiltonMatch(normalizedPlayAlbum, normalizedTrackAlbum)) {
+                                    const artistName = track["Artist"] || track["Artist Name"] || track["artist"];
+                                    if (varExists(artistName) && artistName.length > 0) {
+                                        return artistName;
+                                    } else {
+                                        debugger;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // No album match found among multiple tracks - return Unknown Artist
                 }
             }
         }
+
 
         // Fallback if not found
         if (!Computation._unknownArtistWarningLogged) {
             console.warn('Artist name not found in library for song:', play["Song Name"]);
             Computation._unknownArtistWarningLogged = true;
         }
+
         return "Unknown Artist";
     }
     static isSamePlay(play, previousPlay) {

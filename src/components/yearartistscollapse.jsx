@@ -29,8 +29,9 @@ class YearArtistsCollapse extends Component {
     render() {
 
         var artistsYearBox = [];
+        const filteredArtists = this.state.year.value.filter(a => a.key !== "Unknown Artist");
         for (let index = 0; index < 10; index++) {
-            const element = this.state.year.value[index];
+            const element = filteredArtists[index];
 
             if (typeof element == 'undefined') {
                 continue;
