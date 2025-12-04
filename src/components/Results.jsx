@@ -294,9 +294,15 @@ class Results extends Component {
                         </div>
                     </div>
 
-                    <YearsTopSongs years={this.state.years} />
+                    <div className="box">
+                        <h1>Top Songs by Year</h1>
+                        <YearsTopSongs years={this.state.years} />
+                    </div>
 
-                    <YearsTopArtists yearArtists={this.state.yearArtists} />
+                    <div className="box">
+                        <h1>Top Artists by Year</h1>
+                        <YearsTopArtists yearArtists={this.state.yearArtists} />
+                    </div>
 
                     <ReasonsBox reasons={this.state.reasons} />
 
