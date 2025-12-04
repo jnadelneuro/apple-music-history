@@ -301,8 +301,10 @@ class Computation {
 
         var songs = {};
         var artists = {};
+        var albums = {};
         var yearSongs = {};
         var yearArtists = {};
+        var yearAlbums = {};
         var thisYear = {
             totalPlays: 0,
             totalTime: 0,
@@ -443,6 +445,25 @@ class Computation {
                             totals.totalTime = Number(totals.totalTime) + Number(play["Play Duration Milliseconds"]);
                             artists[artistName].time = Number(artists[artistName].time) + Number(play["Play Duration Milliseconds"]);
                             artists[artistName].missedTime = Number(artists[artistName].missedTime) + missedMilliseconds;
+
+                            // Track albums
+                            var albumName = play["Album Name"];
+                            if (varExists(albumName) && albumName.length > 0) {
+                                if (albums[albumName] == null) {
+                                    albums[albumName] = {
+                                        plays: 0,
+                                        time: 0,
+                                        missedTime: 0
+                                    };
+                                }
+
+                                if (!Computation.isSamePlay(play, previousPlay)) {
+                                    albums[albumName].plays = albums[albumName].plays + 1;
+                                }
+
+                                albums[albumName].time = Number(albums[albumName].time) + Number(play["Play Duration Milliseconds"]);
+                                albums[albumName].missedTime = Number(albums[albumName].missedTime) + missedMilliseconds;
+                            }
     
     
                             var date = new Date(play["Event End Timestamp"]);
@@ -529,6 +550,27 @@ class Computation {
                             }
                             yearArtists[yearID][artistName].time = Number(yearArtists[yearID][artistName].time) + Number(play["Play Duration Milliseconds"]);
                             yearArtists[yearID][artistName].missedTime = Number(yearArtists[yearID][artistName].missedTime) + missedMilliseconds;
+
+                            // Track albums per year
+                            if (varExists(albumName) && albumName.length > 0) {
+                                if (yearAlbums[yearID] == null) {
+                                    yearAlbums[yearID] = {};
+                                }
+
+                                if (yearAlbums[yearID][albumName] == null) {
+                                    yearAlbums[yearID][albumName] = {
+                                        plays: 0,
+                                        time: 0,
+                                        missedTime: 0
+                                    };
+                                }
+
+                                if (!Computation.isSamePlay(play, previousPlay)) {
+                                    yearAlbums[yearID][albumName].plays = yearAlbums[yearID][albumName].plays + 1;
+                                }
+                                yearAlbums[yearID][albumName].time = Number(yearAlbums[yearID][albumName].time) + Number(play["Play Duration Milliseconds"]);
+                                yearAlbums[yearID][albumName].missedTime = Number(yearAlbums[yearID][albumName].missedTime) + missedMilliseconds;
+                            }
     
                             if (today === yearID) {
                                 if (thisYear.artists[artistName] == null) {
@@ -631,6 +673,20 @@ class Computation {
             return b.value.time - a.value.time;
         });
 
+        var albumsResults = Computation.convertObjectToArray(albums);
+        albumsResults = albumsResults.sort(function (a, b) {
+            return b.value.time - a.value.time;
+        });
+
+        var yearAlbumsResult = Computation.convertObjectToArray(yearAlbums);
+
+        for (let index = 0; index < yearAlbumsResult.length; index++) {
+            yearAlbumsResult[index].value = Computation.convertObjectToArray(yearAlbumsResult[index].value);
+            yearAlbumsResult[index].value = yearAlbumsResult[index].value.sort(function (a, b) {
+                return b.value.time - a.value.time;
+            });
+        }
+
         var reasonsResults = Computation.convertObjectToArray(reasons);
         reasonsResults = reasonsResults.sort(function (a, b) {
             return b.value - a.value;
@@ -643,7 +699,9 @@ class Computation {
             reasons: reasonsResults,
             years: yearresult,
             yearArtists: yearArtistsResult,
+            yearAlbums: yearAlbumsResult,
             artists: artistsResults,
+            albums: albumsResults,
             totals: totals,
             filteredSongs: filteredSongs,
             excludedSongs: excludedSongs,
