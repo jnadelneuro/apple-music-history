@@ -162,48 +162,48 @@ class Banner extends Component {
         const file = event.target.files[0];
         if (!file) return;
 
+        let data = [];
+        const filterDate = document.getElementById("filterDate").value;
+
         Papa.parse(file, {
             header: true,
-            skipEmptyLines: true,
-            complete: (results) => {
-                if (results.errors.length > 0) {
-                    console.error('CSV parsing errors:', results.errors);
-                    alert('Error parsing CSV file:\n\n' + results.errors[0].message + '\n\nPlease make sure you uploaded a valid CSV file.');
-                    return;
-                }
-
-                let data = results.data;
+            skipEmptyLines:  true,
+            delimiter: ",",
+            quoteChar: '"',           // ← Columns are wrapped in quotes
+            escapeChar:  '"',          // ← Escaped quotes use double quotes
+            newline: "\n",            // ← Line endings
+            step: (results) => {
+                const row = results.data;
                 
-                // Log CSV info and remind about library file
-                if (data.length > 0) {
-                    console.log('CSV data loaded:', data.length, 'records');
-                    
-                    if (!this.state.libraryData) {
-                        console.warn('⚠️ WARNING: No library file uploaded. Artist information will show as "Unknown Artist".');
-                        console.warn('📁 Please upload the "Apple Music Library Tracks.json" file to see artist names.');
-                    } else {
-                        console.log('✅ Library loaded:', this.state.libraryData.length, 'tracks - artist names will be matched from library');
-                    }
-                }
-                
-                const filterDate = document.getElementById("filterDate").value;
-
+                // Filter on the fly if needed
                 if (filterDate.length > 1) {
-                    var tempArray = [];
-                    for(var i = 0; i < data.length; i++) {
-                        if (data[i]["Event End Timestamp"] >= filterDate + "T00:00:00" || data[i]["Event Start Timestamp"] >= filterDate + "T00:00:00") {
-                            tempArray.push(data[i]);                                        
-                        }
+                    if (row["Event End Timestamp"] >= filterDate + "T00:00:00" || 
+                        row["Event Start Timestamp"] >= filterDate + "T00:00:00") {
+                        data.push(row);
                     }
-                    data = tempArray;
+                } else {
+                    data.push(row);
                 }
-
+                
+                // Log progress every 50000 rows
+                if (data.length % 50000 === 0) {
+                    console.log('Processed:', data.length, 'records so far.. .');
+                }
+            },
+            complete: () => {
                 console.log('CSV data loaded:', data.length, 'records');
-                // Pass both CSV data and library data to the parent
+                console.log('Column names:', Object.keys(data[0]));
+                console.log('First row sample:', data[0]);
+                
+                if (!this. state.libraryData) {
+                    console.warn('⚠️ WARNING: No library file uploaded.');
+                }
+                
                 this.props.dataResponseHandler(data, this.state.libraryData);
             },
             error: (error) => {
-                alert('Error reading CSV file:\n\n' + error.message + '\n\nPlease make sure you uploaded a valid CSV file.');
+                console.error('CSV parsing error:', error);
+                alert('Error reading CSV file:\n\n' + error.message);
             }
         });
     }

@@ -271,6 +271,7 @@ class Computation {
     }
 
     static isPlay(play) {
+        debugger;
         if (varExists(play["Song Name"]) && play["Song Name"].length > 0 && Number(play["Media Duration In Milliseconds"]) > 0 && play["Item Type"] !== "ORIGINAL_CONTENT_SHOWS" && play["Media Type"] !== "VIDEO" && play["End Reason Type"] !== "FAILED_TO_LOAD") {
             return true;
         } else {
@@ -281,6 +282,7 @@ class Computation {
     
 
     static calculateTop(data, excludedSongs, callback, libraryTracks = null) {
+        debugger;
         let unknownArtistTracks = []; // Add this tracking array
         let today = new Date().getFullYear();
         if (new Date().getMonth() < 5) {
