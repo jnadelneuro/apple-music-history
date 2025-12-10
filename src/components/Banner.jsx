@@ -167,14 +167,15 @@ class Banner extends Component {
 
         Papa.parse(file, {
             header: true,
-            skipEmptyLines:  true,
-            delimiter: ",",
-            quoteChar: '"',           // ← Columns are wrapped in quotes
-            escapeChar:  '"',          // ← Escaped quotes use double quotes
-            newline: "\n",            // ← Line endings
+            skipEmptyLines: true,
+            // The step function receives a 'results' object where 'data' is an ARRAY of rows
             step: (results) => {
-                const row = results.data;
+                // Fix: Extract the first item from the array
+                const row = results.data[0];
                 
+                // Guard clause in case empty row slips through
+                if (!row) return;
+
                 // Filter on the fly if needed
                 if (filterDate.length > 1) {
                     if (row["Event End Timestamp"] >= filterDate + "T00:00:00" || 
@@ -187,15 +188,19 @@ class Banner extends Component {
                 
                 // Log progress every 50000 rows
                 if (data.length % 50000 === 0) {
-                    console.log('Processed:', data.length, 'records so far.. .');
+                    console.log('Processed:', data.length, 'records so far...');
                 }
             },
             complete: () => {
                 console.log('CSV data loaded:', data.length, 'records');
-                console.log('Column names:', Object.keys(data[0]));
-                console.log('First row sample:', data[0]);
                 
-                if (!this. state.libraryData) {
+                // These logs should now work correctly
+                if (data.length > 0) {
+                    console.log('Column names:', Object.keys(data[0]));
+                    console.log('First row sample:', data[0]);
+                }
+                
+                if (!this.state.libraryData) {
                     console.warn('⚠️ WARNING: No library file uploaded.');
                 }
                 
