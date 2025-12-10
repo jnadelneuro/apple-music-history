@@ -412,10 +412,23 @@ class Computation {
                         }
     
     
-                        var missedMilliseconds = Number(play["Media Duration In Milliseconds"]) - Number(play["Play Duration Milliseconds"])
+                        var missedMilliseconds = 0;
     
+                        // Only calculate missed time for the final segment of a song
+                        // Set to 0 if this segment will continue (will be resumed next)
                         if (Computation.isSamePlayNext(play, data[index+1])) {
+                            // This play will be resumed, so don't count missed time yet
                             missedMilliseconds = 0;
+                        } else {
+                            // This is the final segment (either standalone or last of a resumed series)
+                            // Calculate missed time accounting for where the play ended
+                            var startPosition = Number(play["Start Position In Milliseconds"]) || 0;
+                            var playDuration = Number(play["Play Duration Milliseconds"]);
+                            var mediaDuration = Number(play["Media Duration In Milliseconds"]);
+                            var endPosition = startPosition + playDuration;
+                            
+                            // Missed time is what's left unplayed after this segment
+                            missedMilliseconds = Math.max(0, mediaDuration - endPosition);
                         }
     
                         if (!Computation.isSamePlay(play, previousPlay)) {
