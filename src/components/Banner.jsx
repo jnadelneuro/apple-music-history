@@ -164,6 +164,7 @@ class Banner extends Component {
 
         let data = [];
         const filterDate = document.getElementById("filterDate").value;
+        let filteredCount = 0;
 
         Papa.parse(file, {
             header: true,
@@ -175,6 +176,31 @@ class Banner extends Component {
                 
                 // Guard clause in case empty row slips through
                 if (!row) return;
+
+                // Apply intelligent duration filtering to fix data anomalies
+                // If Play Duration exceeds Media Duration significantly, cap it at Media Duration
+                const mediaDuration = Number(row["Media Duration In Milliseconds"]);
+                const playDuration = Number(row["Play Duration Milliseconds"]);
+                
+                if (mediaDuration > 0 && playDuration > 0) {
+                    // If play duration exceeds media duration by more than 50% (allowing for small errors/crossfade)
+                    // This catches cases where timers got stuck or paused time was incorrectly logged
+                    if (playDuration > mediaDuration * 1.5) {
+                        // Log the anomaly for debugging (only first few to avoid console spam)
+                        if (filteredCount < 5) {
+                            console.log('⚠️ Duration anomaly detected and corrected:', {
+                                song: row["Song Name"],
+                                originalPlayDuration: playDuration,
+                                mediaDuration: mediaDuration,
+                                ratio: (playDuration / mediaDuration).toFixed(2) + 'x'
+                            });
+                        }
+                        
+                        // Cap the play duration at the media duration
+                        row["Play Duration Milliseconds"] = mediaDuration.toString();
+                        filteredCount++;
+                    }
+                }
 
                 // Filter on the fly if needed
                 if (filterDate.length > 1) {
@@ -193,6 +219,11 @@ class Banner extends Component {
             },
             complete: () => {
                 console.log('CSV data loaded:', data.length, 'records');
+                
+                // Log summary of duration filtering
+                if (filteredCount > 0) {
+                    console.log('✅ Duration anomalies corrected:', filteredCount, 'records had play duration capped to media duration');
+                }
                 
                 // These logs should now work correctly
                 if (data.length > 0) {
