@@ -16,17 +16,23 @@ Read more [on Pat Murray's site](https://patmurray.co/projects/apple-music-analy
 
 ## Data files
 
-The app reads two files from your Apple privacy export (in the **Apple Music Activity** folder):
+The app reads up to three files from your Apple privacy export (in the **Apple
+Music Activity** folder):
 
-- **`Apple Music - Play History Daily Tracks.csv`** *(required)* — your full play
-  history. Each row already includes the artist and song name (in `Track
-  Description`), per-day play and skip counts, and a `Track Identifier`. Artists
-  and songs need no extra lookup.
-- **`Apple Music Library Tracks.json`** *(optional)* — used only to add **album**
-  analytics. Plays are matched to your library by exact `Track Identifier`, which
-  correctly attributes a song to the right album even when the same title appears
-  on multiple releases (single vs. album, deluxe editions, etc.). Without it,
-  everything except top-albums still works.
+- **`Apple Music Play Activity.csv`** *(required)* — your full per-play history,
+  with precise listen time, skip amounts, album names and timestamps. You can
+  upload the raw file as-is, even if it's hundreds of MB: only the ~11 columns
+  the report needs are read while streaming, so memory stays bounded.
+- **`Apple Music Library Tracks.json`** *(recommended)* — Play Activity has no
+  artist column, so the library is used to recover artists, matched by song +
+  album (album-aware, so same-titled songs are attributed correctly).
+- **`Apple Music - Play History Daily Tracks.csv`** *(optional)* — a second
+  artist source. It names the artist for everything you streamed, filling in
+  songs the library (saved tracks only) misses.
+
+Albums and all timing come from Play Activity itself; the other two files only
+improve artist coverage. The fresher the library / daily-tracks export (ideally
+the same export as the Play Activity), the more artists resolve.
 
 ## Using
 

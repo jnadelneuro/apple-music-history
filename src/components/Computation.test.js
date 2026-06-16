@@ -1,128 +1,101 @@
 import Computation from './Computation';
 
-// Rows shaped like "Apple Music - Play History Daily Tracks.csv".
-const dailyData = [
-    {
-        'Track Description': 'Queen - Bohemian Rhapsody',
-        'Track Identifier': '1000',
-        'Date Played': '20220115',
-        'Hours': '14',
-        'Play Duration Milliseconds': '700000',
-        'End Reason Type': 'NATURAL_END_OF_TRACK',
-        'Play Count': '2',
-        'Skip Count': '0'
-    },
-    {
-        'Track Description': 'Queen - Bohemian Rhapsody',
-        'Track Identifier': '1000',
-        'Date Played': '20220220',
-        'Hours': '9, 10',
-        'Play Duration Milliseconds': '350000',
-        'End Reason Type': 'NATURAL_END_OF_TRACK',
-        'Play Count': '1',
-        'Skip Count': '0'
-    },
-    {
-        'Track Description': 'Adele - Hello',
-        'Track Identifier': '2000',
-        'Date Played': '20220310',
-        'Hours': '20',
-        'Play Duration Milliseconds': '200000',
-        'End Reason Type': 'TRACK_SKIPPED_FORWARDS',
-        'Play Count': '1',
-        'Skip Count': '2'
-    },
-    {
-        // Same title "Hello" but a different artist -> must stay distinct.
-        'Track Description': 'Drake - Hello',
-        'Track Identifier': '3000',
-        'Date Played': '20210610',
-        'Hours': '8',
-        'Play Duration Milliseconds': '180000',
-        'End Reason Type': 'NATURAL_END_OF_TRACK',
-        'Play Count': '1',
-        'Skip Count': '0'
-    }
-];
+// Rows shaped like the trimmed "Apple Music Play Activity.csv".
+function play(o) {
+    return {
+        'Song Name': o.song,
+        'Album Name': o.album,
+        'Play Duration Milliseconds': String(o.played),
+        'Media Duration In Milliseconds': String(o.media),
+        'Start Position In Milliseconds': String(o.start ?? 0),
+        'End Position In Milliseconds': String(o.end ?? o.played),
+        'Event End Timestamp': o.ts,
+        'End Reason Type': o.reason || 'NATURAL_END_OF_TRACK',
+        'UTC Offset In Seconds': '0',
+        'Item Type': 'ITUNES_STORE_CONTENT',
+        'Media Type': 'AUDIO'
+    };
+}
 
 const library = [
-    { Title: 'Bohemian Rhapsody', Artist: 'Queen', Album: 'A Night at the Opera', 'Track Duration': 354000, 'Apple Music Track Identifier': '1000' },
-    { Title: 'Hello', Artist: 'Adele', Album: '25', 'Track Duration': 295000, 'Apple Music Track Identifier': '2000' }
-    // id 3000 (Drake - Hello) intentionally absent -> Unknown Album
+    { Title: 'Bohemian Rhapsody', Album: 'A Night at the Opera', Artist: 'Queen' },
+    { Title: 'Hello', Album: '25', Artist: 'Adele' }
 ];
 
-describe('Computation.calculateTop (daily tracks)', () => {
-    test('aggregates songs and artists from Track Description without a library', (done) => {
-        Computation.calculateTop(dailyData, [], (r) => {
-            expect(r.songs.length).toBe(3);
+describe('Computation.calculateTop (play activity)', () => {
+    test('aggregates plays, time and precise skipped time', (done) => {
+        const data = [
+            play({ song: 'Bohemian Rhapsody', album: 'A Night at the Opera', played: 354000, media: 354000, end: 354000, ts: '2022-01-15T14:30:00Z' }),
+            play({ song: 'Bohemian Rhapsody', album: 'A Night at the Opera', played: 100000, media: 354000, end: 100000, ts: '2022-02-20T10:00:00Z', reason: 'TRACK_SKIPPED_FORWARDS' }),
+            play({ song: 'Hello', album: '25', played: 200000, media: 295000, end: 200000, ts: '2022-03-10T16:00:00Z' })
+        ];
+        Computation.calculateTop(data, [], (r) => {
             const top = r.songs[0];
             expect(top.key).toBe("'Bohemian Rhapsody' by Queen");
-            expect(top.value.plays).toBe(3);
-            expect(top.value.artist).toBe('Queen');
+            expect(top.value.plays).toBe(2);
+            expect(top.value.time).toBe(454000);
+            // skipped = (354000-354000) + (354000-100000) = 254000
+            expect(top.value.missedTime).toBe(254000);
 
-            // Same title, different artist must not collapse together.
-            const hellos = r.songs.filter(s => s.value.name === 'Hello');
-            expect(hellos.length).toBe(2);
-
-            // Skip counts captured from the daily rows.
-            const adele = r.songs.find(s => s.key === "'Hello' by Adele");
-            expect(adele.value.skips).toBe(2);
-
-            expect(r.totals.totalPlays).toBe(5);
+            expect(r.artists[0].key).toBe('Queen');
+            expect(r.totals.totalPlays).toBe(3);
             done();
-        });
+        }, library);
     });
 
-    test('no library means no album analytics', (done) => {
-        Computation.calculateTop(dailyData, [], (r) => {
-            expect(r.albums.length).toBe(0);
-            done();
-        });
-    });
-
-    test('library join attributes albums by track id and excludes Unknown Album', (done) => {
-        Computation.calculateTop(dailyData, [], (r) => {
+    test('albums come natively from Play Activity (no library needed)', (done) => {
+        const data = [
+            play({ song: 'Bohemian Rhapsody', album: 'A Night at the Opera', played: 354000, media: 354000, ts: '2022-01-15T14:30:00Z' }),
+            play({ song: 'Hello', album: '25', played: 200000, media: 295000, ts: '2022-03-10T16:00:00Z' })
+        ];
+        Computation.calculateTop(data, [], (r) => {
             const albumKeys = r.albums.map(a => a.key);
             expect(albumKeys).toContain('A Night at the Opera');
             expect(albumKeys).toContain('25');
-            // Drake - Hello is not in the library, so it must not pollute albums.
-            expect(albumKeys).not.toContain('Unknown Album');
-            expect(r.albums.length).toBe(2);
-
-            const opera = r.albums.find(a => a.key === 'A Night at the Opera');
-            expect(opera.value.plays).toBe(3);
             done();
-        }, library);
+        }); // no library passed
     });
 
-    test('splits results by year', (done) => {
-        Computation.calculateTop(dailyData, [], (r) => {
-            const years = r.years.map(y => y.key).sort();
-            expect(years).toEqual(['2021', '2022']);
-
-            const y2021 = r.years.find(y => y.key === '2021');
-            expect(y2021.value[0].value.artist).toBe('Drake');
-            done();
-        }, library);
-    });
-
-    test('respects excluded songs', (done) => {
-        const excluded = ["'Bohemian Rhapsody' by Queen"];
-        Computation.calculateTop(dailyData, excluded, (r) => {
-            // Excluded song is still listed but kept out of artist totals.
-            expect(r.filteredSongs.find(s => s.key === excluded[0])).toBeUndefined();
-            expect(r.artists.find(a => a.key === 'Queen')).toBeUndefined();
-            expect(r.totals.totalPlays).toBe(2); // only the two Hellos remain
-            done();
-        }, library);
-    });
-
-    test('counts end reasons weighted by play and skip counts', (done) => {
-        Computation.calculateTop(dailyData, [], (r) => {
-            const reasons = Object.fromEntries(r.reasons.map(x => [x.key, x.value]));
-            expect(reasons['NATURAL_END_OF_TRACK']).toBe(4); // 2 + 1 + 1
-            expect(reasons['TRACK_SKIPPED_FORWARDS']).toBe(3); // 1 play + 2 skips
+    test('collapses a paused-then-resumed play into one play', (done) => {
+        const data = [
+            play({ song: 'Resumed', album: 'R', played: 50000, media: 200000, start: 0, end: 50000, ts: '2022-04-01T12:00:00Z', reason: 'PLAYBACK_MANUALLY_PAUSED' }),
+            play({ song: 'Resumed', album: 'R', played: 150000, media: 200000, start: 50000, end: 200000, ts: '2022-04-01T12:05:00Z', reason: 'NATURAL_END_OF_TRACK' })
+        ];
+        Computation.calculateTop(data, [], (r) => {
+            const song = r.songs.find(s => s.value.name === 'Resumed');
+            expect(song.value.plays).toBe(1);          // one play, not two
+            expect(song.value.time).toBe(200000);       // both segments summed
+            expect(song.value.missedTime).toBe(0);      // fully listened across segments
             done();
         });
+    });
+
+    test('ignores plays shorter than 8 seconds but still counts the reason', (done) => {
+        const data = [
+            play({ song: 'Skipped Quick', album: 'Q', played: 5000, media: 200000, end: 5000, ts: '2022-05-01T12:00:00Z', reason: 'TRACK_SKIPPED_FORWARDS' }),
+            play({ song: 'Real Play', album: 'Q', played: 180000, media: 180000, ts: '2022-05-01T12:10:00Z' })
+        ];
+        Computation.calculateTop(data, [], (r) => {
+            expect(r.songs.find(s => s.value.name === 'Skipped Quick')).toBeUndefined();
+            expect(r.songs.find(s => s.value.name === 'Real Play')).toBeDefined();
+            const reasons = Object.fromEntries(r.reasons.map(x => [x.key, x.value]));
+            expect(reasons['TRACK_SKIPPED_FORWARDS']).toBe(1);
+            done();
+        });
+    });
+
+    test('splits results by year and respects excluded songs', (done) => {
+        const data = [
+            play({ song: 'Bohemian Rhapsody', album: 'A Night at the Opera', played: 354000, media: 354000, ts: '2021-01-15T14:30:00Z' }),
+            play({ song: 'Hello', album: '25', played: 200000, media: 295000, ts: '2021-06-10T16:00:00Z' }),
+            play({ song: 'Hello', album: '25', played: 200000, media: 295000, ts: '2022-03-10T16:00:00Z' })
+        ];
+        Computation.calculateTop(data, ["'Bohemian Rhapsody' by Queen"], (r) => {
+            const years = r.years.map(y => y.key).sort();
+            expect(years).toEqual(['2021', '2022']);
+            expect(r.filteredSongs.find(s => s.key === "'Bohemian Rhapsody' by Queen")).toBeUndefined();
+            expect(r.artists.find(a => a.key === 'Queen')).toBeUndefined();
+            done();
+        }, library);
     });
 });

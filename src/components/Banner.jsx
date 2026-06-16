@@ -128,18 +128,33 @@ const keys = [
 ];
 */
 
+// Only these columns from Play Activity are needed for the report. Projecting
+// to them while streaming keeps even the full (~300 MB, 100+ column) export
+// light in memory, so users can upload the raw file without trimming it first.
+const PLAY_ACTIVITY_COLUMNS = [
+    "Song Name",
+    "Album Name",
+    "Play Duration Milliseconds",
+    "Media Duration In Milliseconds",
+    "Start Position In Milliseconds",
+    "End Position In Milliseconds",
+    "Event End Timestamp",
+    "End Reason Type",
+    "UTC Offset In Seconds",
+    "Item Type",
+    "Media Type"
+];
+
 class Banner extends Component {
 
     constructor(props) {
         super(props);
-        this.state = { 
+        this.state = {
             loading: false,
             libraryData: null,
-            csvData: null
+            dailyTracksData: null
         };
     }
-
-
 
     handleLibraryUpload = (event) => {
         const file = event.target.files[0];
@@ -158,55 +173,75 @@ class Banner extends Component {
         reader.readAsText(file);
     }
 
+    // Optional second artist source: the Play History Daily Tracks file names the
+    // artist for everything actually played, covering streamed songs the library
+    // (which only holds saved tracks) misses.
+    handleDailyTracksUpload = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        let rows = [];
+        Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            step: (results) => {
+                const row = results.data[0];
+                if (!row) return;
+                const desc = row["Track Description"];
+                if (desc) rows.push({ "Track Description": desc });
+            },
+            complete: () => {
+                this.setState({ dailyTracksData: rows });
+                console.log('Daily tracks loaded:', rows.length, 'rows (artist source)');
+            },
+            error: (error) => {
+                alert('Error reading Daily Tracks CSV:\n\n' + error.message);
+            }
+        });
+    }
+
     handleCsvUpload = (event) => {
         const file = event.target.files[0];
         if (!file) return;
 
         let data = [];
-        // <input type="date"> gives "YYYY-MM-DD"; the daily file's "Date Played"
-        // is "YYYYMMDD", so compare both as digits-only strings.
-        const filterDate = document.getElementById("filterDate").value.replace(/-/g, '');
+        // <input type="date"> gives "YYYY-MM-DD" -> ISO prefix for timestamp compare.
+        const filterDateRaw = document.getElementById("filterDate").value;
+        const filterDate = filterDateRaw ? filterDateRaw + "T00:00:00" : "";
 
         Papa.parse(file, {
             header: true,
             skipEmptyLines: true,
-            // The step function receives a 'results' object where 'data' is an ARRAY of rows
             step: (results) => {
-                // Fix: Extract the first item from the array
                 const row = results.data[0];
-
-                // Guard clause in case empty row slips through
                 if (!row) return;
 
                 // Filter on the fly if a start date was supplied
-                if (filterDate.length > 1) {
-                    const playedDate = String(row["Date Played"] || '');
-                    if (playedDate >= filterDate) {
-                        data.push(row);
-                    }
-                } else {
-                    data.push(row);
+                if (filterDate && (row["Event End Timestamp"] || "") < filterDate) {
+                    return;
                 }
 
-                // Log progress every 50000 rows
+                // Project to only the needed columns to keep memory bounded.
+                const slim = {};
+                for (let i = 0; i < PLAY_ACTIVITY_COLUMNS.length; i++) {
+                    const col = PLAY_ACTIVITY_COLUMNS[i];
+                    slim[col] = row[col];
+                }
+                data.push(slim);
+
                 if (data.length % 50000 === 0) {
                     console.log('Processed:', data.length, 'records so far...');
                 }
             },
             complete: () => {
-                console.log('CSV data loaded:', data.length, 'records');
-                
-                // These logs should now work correctly
+                console.log('Play Activity loaded:', data.length, 'records');
                 if (data.length > 0) {
-                    console.log('Column names:', Object.keys(data[0]));
                     console.log('First row sample:', data[0]);
                 }
-                
-                if (!this.state.libraryData) {
-                    console.warn('⚠️ WARNING: No library file uploaded.');
+                if (!this.state.libraryData && !this.state.dailyTracksData) {
+                    console.warn('⚠️ No artist source uploaded - artists will show as "Unknown Artist".');
                 }
-                
-                this.props.dataResponseHandler(data, this.state.libraryData);
+                this.props.dataResponseHandler(data, this.state.libraryData, this.state.dailyTracksData);
             },
             error: (error) => {
                 console.error('CSV parsing error:', error);
@@ -225,32 +260,9 @@ class Banner extends Component {
                     <hr className="my-2" />
                     <p>No data ever leaves your computer and all computation is done in the browser.</p>
                     
-                    <div className="box" style={{backgroundColor: '#d1ecf1', borderColor: '#bee5eb', padding: '15px', marginBottom: '20px'}}>
-                        <h5>📁 Step 1: Upload Library (optional — needed for album names)</h5>
-                        <p>The play history already includes artist and song names, so this step is optional. Upload your <strong>Apple Music Library Tracks.json</strong> file to also see <strong>album</strong> analytics — songs are matched to your library by track ID. Without it, top albums won't be available.</p>
-                        <input
-                            id="libraryFile"
-                            name="libraryFile"
-                            type="file"
-                            accept=".json"
-                            onChange={this.handleLibraryUpload}
-                            style={{marginBottom: '10px'}}
-                        />
-                        {this.state.libraryData && (
-                            <p style={{color: 'green', marginTop: '10px'}}>
-                                ✅ Library loaded: {this.state.libraryData.length} tracks
-                            </p>
-                        )}
-                        {!this.state.libraryData && (
-                            <p style={{color: '#856404', marginTop: '10px', fontWeight: 'bold'}}>
-                                ⚠️ No library file uploaded - album names will not be available
-                            </p>
-                        )}
-                    </div>
-
                     <div className="box" style={{backgroundColor: '#fff3cd', borderColor: '#ffc107', padding: '15px', marginBottom: '20px'}}>
-                        <h5>📊 Step 2: Upload Play History (Required)</h5>
-                        <p>Upload your <strong>Apple Music - Play History Daily Tracks.csv</strong> file. This contains your full listening history with artist names, play counts and skip counts.</p>
+                        <h5>📊 Step 1: Upload Play Activity (Required)</h5>
+                        <p>Upload your <strong>Apple Music Play Activity.csv</strong> file — your full per-play history with precise listen and skip times. You can upload the raw file as-is; only the columns needed are read, so even very large exports stay fast.</p>
                         <div>
                             <div style={{marginBottom: '20px'}}>
                                 <p>If you want to specify the start of the report, such as to only include 2021, input 01-01-2021 below. Otherwise, leave it blank to include all data.</p>
@@ -268,14 +280,47 @@ class Banner extends Component {
                         </div>
                     </div>
 
+                    <div className="box" style={{backgroundColor: '#d1ecf1', borderColor: '#bee5eb', padding: '15px', marginBottom: '20px'}}>
+                        <h5>📁 Step 2: Upload Library (recommended — for artist names)</h5>
+                        <p>Play Activity has no artist column, so upload your <strong>Apple Music Library Tracks.json</strong> to recover artists (matched by song + album). Albums come from Play Activity either way. Without this, many songs show as "Unknown Artist".</p>
+                        <input
+                            id="libraryFile"
+                            name="libraryFile"
+                            type="file"
+                            accept=".json"
+                            onChange={this.handleLibraryUpload}
+                            style={{marginBottom: '10px'}}
+                        />
+                        {this.state.libraryData
+                            ? <p style={{color: 'green', marginTop: '10px'}}>✅ Library loaded: {this.state.libraryData.length} tracks</p>
+                            : <p style={{color: '#856404', marginTop: '10px', fontWeight: 'bold'}}>⚠️ No library uploaded - artists may be incomplete</p>}
+                    </div>
+
+                    <div className="box" style={{backgroundColor: '#e2e3e5', borderColor: '#d6d8db', padding: '15px', marginBottom: '20px'}}>
+                        <h5>🎯 Step 3: Upload Play History Daily Tracks (optional — better artist coverage)</h5>
+                        <p>Optionally add <strong>Apple Music - Play History Daily Tracks.csv</strong>. It names the artist for everything you streamed, filling in artists the library misses (saved songs only).</p>
+                        <input
+                            id="dailyFile"
+                            name="dailyFile"
+                            type="file"
+                            accept=".csv"
+                            onChange={this.handleDailyTracksUpload}
+                            style={{marginBottom: '10px'}}
+                        />
+                        {this.state.dailyTracksData && (
+                            <p style={{color: 'green', marginTop: '10px'}}>✅ Daily Tracks loaded: {this.state.dailyTracksData.length} rows</p>
+                        )}
+                    </div>
+
                 </Jumbotron>
 
                 <div className="box">
-                    <h3>Where is the file?</h3>
+                    <h3>Where are the files?</h3>
 
                     <p>After downloading it from the privacy portal (<a href="https://privacy.apple.com">privacy.apple.com</a>). The files are in the <strong>Apple Music Activity</strong> folder:</p>
-                    <pre>Apple Media Services information/Apple Music Activity/Apple Music - Play History Daily Tracks.csv
-Apple Media Services information/Apple Music Activity/Apple Music Library Tracks.json</pre>
+                    <pre>Apple Media Services information/Apple Music Activity/Apple Music Play Activity.csv
+Apple Media Services information/Apple Music Activity/Apple Music Library Tracks.json
+Apple Media Services information/Apple Music Activity/Apple Music - Play History Daily Tracks.csv</pre>
                     <p><a href="https://www.macrumors.com/2018/11/29/web-app-apple-music-history/">Follow this tutorial from MacRumors for more detailed instructions.</a></p>
                     <a href="/step1.png"><img style={{ width: '300px' }} src={"/step1.png"} alt="" /></a>
                     <a href="/step2.png"><img style={{ width: '300px' }} src={"/step2.png"} alt="" /></a>

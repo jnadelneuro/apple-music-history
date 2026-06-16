@@ -1,4 +1,5 @@
-import LibraryIndex from './LibraryIndex';
+import moment from 'moment';
+import ArtistResolver from './ArtistResolver';
 
 function varExists(el) {
     return el !== null && typeof el !== "undefined";
@@ -53,20 +54,10 @@ class Computation {
         var days = parseInt(timeinmilli = timeinmilli / 24);
 
         var string = "";
-
-        if (days > 0) {
-            string = string + days + "d";
-        }
-        if (hours > 0) {
-            string = string + " " + hours + "h";
-        }
-        if (minutes > 0) {
-            string = string + " " + minutes + "m";
-        }
-        if (seconds > 0) {
-            string = string + " " + seconds + "s";
-        }
-
+        if (days > 0) string = string + days + "d";
+        if (hours > 0) string = string + " " + hours + "h";
+        if (minutes > 0) string = string + " " + minutes + "m";
+        if (seconds > 0) string = string + " " + seconds + "s";
         return string;
     }
 
@@ -74,72 +65,57 @@ class Computation {
         var result = [];
         for (var key in array) {
             if (array.hasOwnProperty(key)) {
-                result.push({
-                    key: key,
-                    value: array[key]
-                });
+                result.push({ key: key, value: array[key] });
             }
         }
         return result;
     }
 
-    /**
-     * Splits a "Track Description" / "Track Name" ("Artist - Title") into parts.
-     * The play-history files carry the artist inline, so no library lookup is
-     * needed to attribute artists. Splits on the first " - " (covers 99.9% of
-     * rows; titles that themselves contain " - " keep the remainder as the title).
-     */
-    static parseTrackDescription(desc) {
-        if (!varExists(desc) || typeof desc !== 'string') {
-            return { artist: 'Unknown Artist', name: '' };
-        }
-        const sep = desc.indexOf(' - ');
-        if (sep === -1) {
-            return { artist: 'Unknown Artist', name: desc.trim() };
-        }
-        return {
-            artist: desc.slice(0, sep).trim(),
-            name: desc.slice(sep + 3).trim()
-        };
+    // A play that was paused and then resumed shows up as consecutive records
+    // where one segment's end position equals the next segment's start position.
+    // Detecting that lets us avoid double-counting plays and skipped time.
+    static isSamePlay(play, previousPlay) {
+        return previousPlay != null &&
+            Computation.isPlay(previousPlay) &&
+            Computation.isPlay(play) &&
+            previousPlay["Song Name"] === play["Song Name"] &&
+            previousPlay["End Position In Milliseconds"] === play["Start Position In Milliseconds"] &&
+            previousPlay["End Reason Type"] === "PLAYBACK_MANUALLY_PAUSED";
+    }
+
+    static isSamePlayNext(play, nextPlay) {
+        return nextPlay != null &&
+            Computation.isPlay(nextPlay) &&
+            Computation.isPlay(play) &&
+            nextPlay["Song Name"] === play["Song Name"] &&
+            play["End Position In Milliseconds"] === nextPlay["Start Position In Milliseconds"] &&
+            play["End Reason Type"] === "PLAYBACK_MANUALLY_PAUSED";
+    }
+
+    static isPlay(play) {
+        return varExists(play["Song Name"]) && play["Song Name"].length > 0 &&
+            Number(play["Media Duration In Milliseconds"]) > 0 &&
+            play["Item Type"] !== "ORIGINAL_CONTENT_SHOWS" &&
+            play["Media Type"] !== "VIDEO" &&
+            play["End Reason Type"] !== "FAILED_TO_LOAD";
     }
 
     /**
-     * Parses an Apple "Date Played" value ("YYYYMMDD") into date parts.
-     * @returns {{year:number, monthIdx:number, day:number} | null}
-     */
-    static parsePlayedDate(value) {
-        const s = String(value || '').trim();
-        if (!/^\d{8}$/.test(s)) return null;
-        const year = Number(s.slice(0, 4));
-        const monthIdx = Number(s.slice(4, 6)) - 1;
-        const day = Number(s.slice(6, 8));
-        if (monthIdx < 0 || monthIdx > 11 || day < 1 || day > 31) return null;
-        return { year, monthIdx, day };
-    }
-
-    /**
-     * Aggregates "Apple Music - Play History Daily Tracks.csv" rows into the
-     * report. Each row is a per-day, per-track aggregate carrying Play Count,
-     * Skip Count, Play Duration, a Track Identifier and a "Artist - Title"
-     * Track Description.
+     * Aggregates "Apple Music Play Activity" rows into the report.
      *
-     * @param {Array}    data          parsed daily-tracks rows
-     * @param {Array}    excludedSongs  uniqueIDs the user has excluded
-     * @param {Function} callback       receives the assembled report
-     * @param {Array}    libraryTracks  optional library JSON, used only for albums
+     * @param {Array}    data            per-event play rows
+     * @param {Array}    excludedSongs   uniqueIDs the user excluded
+     * @param {Function} callback        receives the assembled report
+     * @param {Array}    libraryTracks   optional library JSON (artist source)
+     * @param {Array}    dailyTracksRows optional daily-tracks rows (artist source)
      */
-    static calculateTop(data, excludedSongs, callback, libraryTracks = null) {
+    static calculateTop(data, excludedSongs, callback, libraryTracks = null, dailyTracksRows = null) {
         let today = new Date().getFullYear();
         if (new Date().getMonth() < 5) {
             today = today - 1;
         }
 
-        // Library is optional and used solely to recover albums (and track
-        // durations for skipped-time) via exact Track Identifier joins.
-        let libraryIndex = null;
-        if (Array.isArray(libraryTracks) && libraryTracks.length > 0) {
-            libraryIndex = LibraryIndex.build(libraryTracks);
-        }
+        const resolver = new ArtistResolver(libraryTracks, dailyTracksRows);
 
         var songs = {};
         var artists = {};
@@ -147,23 +123,12 @@ class Computation {
         var yearSongs = {};
         var yearArtists = {};
         var yearAlbums = {};
-        var thisYear = {
-            totalPlays: 0,
-            totalTime: 0,
-            year: today,
-            artists: {}
-        };
+        var thisYear = { totalPlays: 0, totalTime: 0, year: today, artists: {} };
         var days = {};
         var months = {};
-        var totals = {
-            totalPlays: 0,
-            totalTime: 0,
-            totalLyrics: 0
-        };
+        var totals = { totalPlays: 0, totalTime: 0, totalLyrics: 0 };
         var heatmapData = [];
-        for (let d = 0; d < 7; d++) {
-            heatmapData.push(new Array(24).fill(0));
-        }
+        for (let d = 0; d < 7; d++) heatmapData.push(new Array(24).fill(0));
         var reasons = {
             "SCRUB_END": 0,
             "MANUALLY_SELECTED_PLAYBACK_OF_A_DIFF_ITEM": 0,
@@ -180,201 +145,177 @@ class Computation {
             "": 0
         };
 
+        var previousPlay;
+
         for (let index = 0; index < data.length; index++) {
-            const row = data[index];
-            if (!row) continue;
+            const play = data[index];
+            if (!play) { previousPlay = play; continue; }
 
-            const description = row["Track Description"] || row["Track Name"];
-            if (!varExists(description) || description.length === 0) continue;
+            if (varExists(play["Song Name"]) && varExists(play["Play Duration Milliseconds"]) &&
+                varExists(play["Media Duration In Milliseconds"]) && varExists(play["Event End Timestamp"]) &&
+                varExists(play["UTC Offset In Seconds"])) {
 
-            const date = Computation.parsePlayedDate(row["Date Played"]);
-            if (!date) continue;
+                const reason = play["End Reason Type"];
+                reasons[reason] = (reasons[reason] || 0) + 1;
 
-            const { artist, name } = Computation.parseTrackDescription(description);
-            if (!name) continue;
+                if (Computation.isPlay(play)) {
+                    const artistName = resolver.resolve(play["Song Name"], play["Album Name"]);
+                    const uniqueID = "'" + play["Song Name"] + "' by " + artistName;
 
-            const playCount = Number(row["Play Count"]) || 0;
-            const skipCount = Number(row["Skip Count"]) || 0;
-            const time = Number(row["Play Duration Milliseconds"]) || 0;
-            if (playCount === 0 && time === 0 && skipCount === 0) continue;
+                    if (Number(play["Play Duration Milliseconds"]) > 8000) {
 
-            const endReason = row["End Reason Type"] || "";
+                        if (songs[uniqueID] == null) {
+                            songs[uniqueID] = {
+                                plays: 0,
+                                time: 0,
+                                name: play["Song Name"],
+                                artist: artistName,
+                                missedTime: 0,
+                                excluded: excludedSongs.includes(uniqueID)
+                            };
+                        }
 
-            // Album (and track duration) from the library via exact id join.
-            let album = "Unknown Album";
-            let duration = 0;
-            const libEntry = LibraryIndex.lookup(libraryIndex, row["Track Identifier"]);
-            if (libEntry) {
-                if (libEntry.album) album = libEntry.album;
-                duration = libEntry.duration || 0;
-            }
-            const albumKnown = album !== "Unknown Album";
+                        // Skipped (unplayed) time for the final segment of a play.
+                        var missedMilliseconds = 0;
+                        if (Computation.isSamePlayNext(play, data[index + 1])) {
+                            // Will be resumed next; count its missed time later.
+                            missedMilliseconds = 0;
+                        } else {
+                            var mediaDuration = Number(play["Media Duration In Milliseconds"]);
+                            // Prefer the recorded end position; fall back to start + duration.
+                            var endPosition;
+                            if (varExists(play["End Position In Milliseconds"]) && play["End Position In Milliseconds"] !== "") {
+                                endPosition = Number(play["End Position In Milliseconds"]);
+                            } else {
+                                endPosition = (Number(play["Start Position In Milliseconds"]) || 0) + Number(play["Play Duration Milliseconds"]);
+                            }
+                            missedMilliseconds = Math.max(0, mediaDuration - endPosition);
+                        }
 
-            // Skipped/unplayed time is only knowable when the library supplies a
-            // track duration; otherwise it stays 0 rather than being guessed.
-            let missedTime = 0;
-            if (duration > 0 && playCount > 0) {
-                missedTime = Math.max(0, duration * playCount - time);
-            }
+                        const newPlay = !Computation.isSamePlay(play, previousPlay);
+                        if (newPlay) songs[uniqueID].plays += 1;
+                        songs[uniqueID].time += Number(play["Play Duration Milliseconds"]);
+                        songs[uniqueID].missedTime += missedMilliseconds;
 
-            reasons[endReason] = (reasons[endReason] || 0) + playCount + skipCount;
+                        if (!songs[uniqueID].excluded) {
+                            if (artists[artistName] == null) {
+                                artists[artistName] = { plays: 0, time: 0, missedTime: 0 };
+                            }
+                            if (newPlay) {
+                                totals.totalPlays += 1;
+                                artists[artistName].plays += 1;
+                            }
+                            totals.totalTime += Number(play["Play Duration Milliseconds"]);
+                            artists[artistName].time += Number(play["Play Duration Milliseconds"]);
+                            artists[artistName].missedTime += missedMilliseconds;
 
-            const uniqueID = "'" + name + "' by " + artist;
+                            // Albums (native Album Name from Play Activity)
+                            var albumName = play["Album Name"];
+                            if (varExists(albumName) && albumName.length > 0) {
+                                if (albums[albumName] == null) {
+                                    albums[albumName] = { plays: 0, time: 0, missedTime: 0 };
+                                }
+                                if (newPlay) albums[albumName].plays += 1;
+                                albums[albumName].time += Number(play["Play Duration Milliseconds"]);
+                                albums[albumName].missedTime += missedMilliseconds;
+                            }
 
-            if (songs[uniqueID] == null) {
-                songs[uniqueID] = {
-                    plays: 0,
-                    time: 0,
-                    name: name,
-                    artist: artist,
-                    missedTime: 0,
-                    skips: 0,
-                    excluded: excludedSongs.includes(uniqueID)
-                };
-            }
-            songs[uniqueID].plays += playCount;
-            songs[uniqueID].time += time;
-            songs[uniqueID].missedTime += missedTime;
-            songs[uniqueID].skips += skipCount;
+                            var date = new Date(play["Event End Timestamp"]);
+                            var dayID = date.getDate() + " " + Computation.monthNames[date.getMonth()] + ", " + date.getFullYear();
+                            if (days[dayID] == null) days[dayID] = { plays: 0, time: 0 };
+                            if (newPlay) days[dayID].plays += 1;
+                            days[dayID].time += Number(play["Play Duration Milliseconds"]);
 
-            if (songs[uniqueID].excluded) continue;
+                            var offset = Number(play["UTC Offset In Seconds"]) / 60;
+                            var day = moment(date).utcOffset(offset);
+                            var dayint = day.day();
+                            var hoursint = day.hours();
+                            if (dayint >= 0 && dayint < 7 && varExists(hoursint) &&
+                                !isNaN(Number(play["Play Duration Milliseconds"]))) {
+                                heatmapData[dayint][hoursint] += Number(play["Play Duration Milliseconds"]);
+                            }
 
-            // Artists
-            if (artists[artist] == null) {
-                artists[artist] = { plays: 0, time: 0, missedTime: 0, skips: 0 };
-            }
-            artists[artist].plays += playCount;
-            artists[artist].time += time;
-            artists[artist].missedTime += missedTime;
-            artists[artist].skips += skipCount;
+                            var monthID = date.getFullYear() + "-" + Computation.monthNames[date.getMonth()];
+                            if (months[monthID] == null) {
+                                months[monthID] = { plays: 0, time: 0, missedTime: 0, sortKey: date.getFullYear() * 100 + date.getMonth() };
+                            }
+                            if (newPlay) months[monthID].plays += 1;
+                            months[monthID].time += Number(play["Play Duration Milliseconds"]);
+                            months[monthID].missedTime += missedMilliseconds;
 
-            totals.totalPlays += playCount;
-            totals.totalTime += time;
+                            var yearID = date.getFullYear();
 
-            // Albums (only when the library resolved a real album name)
-            if (albumKnown) {
-                if (albums[album] == null) {
-                    albums[album] = { plays: 0, time: 0, missedTime: 0 };
+                            if (yearSongs[yearID] == null) yearSongs[yearID] = {};
+                            if (yearSongs[yearID][uniqueID] == null) {
+                                yearSongs[yearID][uniqueID] = { plays: 0, time: 0, name: play["Song Name"], artist: artistName, missedTime: 0 };
+                            }
+                            if (newPlay) yearSongs[yearID][uniqueID].plays += 1;
+                            yearSongs[yearID][uniqueID].time += Number(play["Play Duration Milliseconds"]);
+                            yearSongs[yearID][uniqueID].missedTime += missedMilliseconds;
+
+                            if (yearArtists[yearID] == null) yearArtists[yearID] = {};
+                            if (yearArtists[yearID][artistName] == null) {
+                                yearArtists[yearID][artistName] = { plays: 0, time: 0, missedTime: 0 };
+                            }
+                            if (newPlay) yearArtists[yearID][artistName].plays += 1;
+                            yearArtists[yearID][artistName].time += Number(play["Play Duration Milliseconds"]);
+                            yearArtists[yearID][artistName].missedTime += missedMilliseconds;
+
+                            if (varExists(albumName) && albumName.length > 0) {
+                                if (yearAlbums[yearID] == null) yearAlbums[yearID] = {};
+                                if (yearAlbums[yearID][albumName] == null) {
+                                    yearAlbums[yearID][albumName] = { plays: 0, time: 0, missedTime: 0 };
+                                }
+                                if (newPlay) yearAlbums[yearID][albumName].plays += 1;
+                                yearAlbums[yearID][albumName].time += Number(play["Play Duration Milliseconds"]);
+                                yearAlbums[yearID][albumName].missedTime += missedMilliseconds;
+                            }
+
+                            if (today === yearID) {
+                                if (thisYear.artists[artistName] == null) {
+                                    thisYear.artists[artistName] = { plays: 0, time: 0, missedTime: 0 };
+                                }
+                                if (newPlay) {
+                                    thisYear.totalPlays += 1;
+                                    thisYear.artists[artistName].plays += 1;
+                                }
+                                thisYear.totalTime += Number(play["Play Duration Milliseconds"]);
+                                thisYear.artists[artistName].time += Number(play["Play Duration Milliseconds"]);
+                                thisYear.artists[artistName].missedTime += missedMilliseconds;
+                            }
+                        }
+                    }
                 }
-                albums[album].plays += playCount;
-                albums[album].time += time;
-                albums[album].missedTime += missedTime;
             }
 
-            // Days
-            const dateObj = new Date(date.year, date.monthIdx, date.day);
-            const dayID = date.day + " " + Computation.monthNames[date.monthIdx] + ", " + date.year;
-            if (days[dayID] == null) {
-                days[dayID] = { plays: 0, time: 0 };
-            }
-            days[dayID].plays += playCount;
-            days[dayID].time += time;
-
-            // Hour-of-week heatmap: spread the row's time across the hours it lists.
-            const dow = dateObj.getDay(); // 0 = Sunday .. 6 = Saturday
-            const hourList = String(row["Hours"] || "")
-                .split(",")
-                .map(h => parseInt(h.trim(), 10))
-                .filter(h => !isNaN(h) && h >= 0 && h < 24);
-            if (hourList.length > 0 && dow >= 0 && dow < 7) {
-                const share = time / hourList.length;
-                for (const h of hourList) {
-                    heatmapData[dow][h] += share;
-                }
-            }
-
-            // Months (keep chronological sort key for the line chart)
-            const monthID = date.year + "-" + Computation.monthNames[date.monthIdx];
-            if (months[monthID] == null) {
-                months[monthID] = { plays: 0, time: 0, missedTime: 0, sortKey: date.year * 100 + date.monthIdx };
-            }
-            months[monthID].plays += playCount;
-            months[monthID].time += time;
-            months[monthID].missedTime += missedTime;
-
-            const yearID = date.year;
-
-            // Songs per year
-            if (yearSongs[yearID] == null) yearSongs[yearID] = {};
-            if (yearSongs[yearID][uniqueID] == null) {
-                yearSongs[yearID][uniqueID] = {
-                    plays: 0, time: 0, name: name, artist: artist, missedTime: 0
-                };
-            }
-            yearSongs[yearID][uniqueID].plays += playCount;
-            yearSongs[yearID][uniqueID].time += time;
-            yearSongs[yearID][uniqueID].missedTime += missedTime;
-
-            // Artists per year
-            if (yearArtists[yearID] == null) yearArtists[yearID] = {};
-            if (yearArtists[yearID][artist] == null) {
-                yearArtists[yearID][artist] = { plays: 0, time: 0, missedTime: 0 };
-            }
-            yearArtists[yearID][artist].plays += playCount;
-            yearArtists[yearID][artist].time += time;
-            yearArtists[yearID][artist].missedTime += missedTime;
-
-            // Albums per year
-            if (albumKnown) {
-                if (yearAlbums[yearID] == null) yearAlbums[yearID] = {};
-                if (yearAlbums[yearID][album] == null) {
-                    yearAlbums[yearID][album] = { plays: 0, time: 0, missedTime: 0 };
-                }
-                yearAlbums[yearID][album].plays += playCount;
-                yearAlbums[yearID][album].time += time;
-                yearAlbums[yearID][album].missedTime += missedTime;
-            }
-
-            // Current-year summary (powers the "Wrapped" view)
-            if (today === yearID) {
-                if (thisYear.artists[artist] == null) {
-                    thisYear.artists[artist] = { plays: 0, time: 0, missedTime: 0 };
-                }
-                thisYear.totalPlays += playCount;
-                thisYear.totalTime += time;
-                thisYear.artists[artist].plays += playCount;
-                thisYear.artists[artist].time += time;
-                thisYear.artists[artist].missedTime += missedTime;
-            }
+            previousPlay = play;
         }
 
         var result = Computation.convertObjectToArray(songs);
-        result = result.sort(function (a, b) {
-            return b.value.time - a.value.time;
-        });
+        result = result.sort((a, b) => b.value.time - a.value.time);
 
         var filteredSongs = [];
         for (let index = 0; index < result.length; index++) {
-            if (!result[index].value.excluded) {
-                filteredSongs.push(result[index]);
-            }
+            if (!result[index].value.excluded) filteredSongs.push(result[index]);
         }
 
         var yearresult = Computation.convertObjectToArray(yearSongs);
         for (let index = 0; index < yearresult.length; index++) {
-            yearresult[index].value = Computation.convertObjectToArray(yearresult[index].value);
-            yearresult[index].value = yearresult[index].value.sort(function (a, b) {
-                return b.value.time - a.value.time;
-            });
+            yearresult[index].value = Computation.convertObjectToArray(yearresult[index].value)
+                .sort((a, b) => b.value.time - a.value.time);
         }
 
         var yearArtistsResult = Computation.convertObjectToArray(yearArtists);
         for (let index = 0; index < yearArtistsResult.length; index++) {
-            yearArtistsResult[index].value = Computation.convertObjectToArray(yearArtistsResult[index].value);
-            yearArtistsResult[index].value = yearArtistsResult[index].value.sort(function (a, b) {
-                return b.value.time - a.value.time;
-            });
+            yearArtistsResult[index].value = Computation.convertObjectToArray(yearArtistsResult[index].value)
+                .sort((a, b) => b.value.time - a.value.time);
         }
 
-        var thisYearArtsistsResult = Computation.convertObjectToArray(thisYear.artists);
-        thisYearArtsistsResult = thisYearArtsistsResult.sort(function (a, b) {
-            return b.value.time - a.value.time;
-        });
+        var thisYearArtsistsResult = Computation.convertObjectToArray(thisYear.artists)
+            .sort((a, b) => b.value.time - a.value.time);
 
-        var thisYearSongs = Computation.convertObjectToArray(yearSongs[today]);
-        thisYearSongs = thisYearSongs.sort(function (a, b) {
-            return b.value.time - a.value.time;
-        });
+        var thisYearSongs = Computation.convertObjectToArray(yearSongs[today])
+            .sort((a, b) => b.value.time - a.value.time);
 
         var thisYearResult = {
             totalPlays: thisYear.totalPlays,
@@ -384,38 +325,21 @@ class Computation {
             songs: thisYearSongs
         };
 
-        var resultDays = Computation.convertObjectToArray(days);
-        resultDays = resultDays.sort(function (a, b) {
-            return b.value.time - a.value.time;
-        });
+        var resultDays = Computation.convertObjectToArray(days).sort((a, b) => b.value.time - a.value.time);
 
-        var resultMonths = Computation.convertObjectToArray(months);
-        resultMonths = resultMonths.sort(function (a, b) {
-            return a.value.sortKey - b.value.sortKey;
-        });
+        var resultMonths = Computation.convertObjectToArray(months).sort((a, b) => a.value.sortKey - b.value.sortKey);
 
-        var artistsResults = Computation.convertObjectToArray(artists);
-        artistsResults = artistsResults.sort(function (a, b) {
-            return b.value.time - a.value.time;
-        });
+        var artistsResults = Computation.convertObjectToArray(artists).sort((a, b) => b.value.time - a.value.time);
 
-        var albumsResults = Computation.convertObjectToArray(albums);
-        albumsResults = albumsResults.sort(function (a, b) {
-            return b.value.time - a.value.time;
-        });
+        var albumsResults = Computation.convertObjectToArray(albums).sort((a, b) => b.value.time - a.value.time);
 
         var yearAlbumsResult = Computation.convertObjectToArray(yearAlbums);
         for (let index = 0; index < yearAlbumsResult.length; index++) {
-            yearAlbumsResult[index].value = Computation.convertObjectToArray(yearAlbumsResult[index].value);
-            yearAlbumsResult[index].value = yearAlbumsResult[index].value.sort(function (a, b) {
-                return b.value.time - a.value.time;
-            });
+            yearAlbumsResult[index].value = Computation.convertObjectToArray(yearAlbumsResult[index].value)
+                .sort((a, b) => b.value.time - a.value.time);
         }
 
-        var reasonsResults = Computation.convertObjectToArray(reasons);
-        reasonsResults = reasonsResults.sort(function (a, b) {
-            return b.value - a.value;
-        });
+        var reasonsResults = Computation.convertObjectToArray(reasons).sort((a, b) => b.value - a.value);
 
         var returnVal = {
             songs: result,
