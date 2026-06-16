@@ -1,0 +1,218 @@
+/* Apple Music-style dark theme for the dashboard.
+   Scoped under .amh-dashboard so the existing upload (Banner) screen is untouched. */
+
+.amh-dashboard {
+    --bg: #0b0b0c;
+    --surface: #1c1c1e;
+    --surface-2: #2c2c2e;
+    --surface-3: #3a3a3c;
+    --accent: #fa233b;
+    --accent-2: #fb5c74;
+    --text: #f5f5f7;
+    --text-dim: #a1a1a6;
+    --border: rgba(255, 255, 255, 0.08);
+    --radius: 14px;
+    --shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+
+    color: var(--text);
+    background: var(--bg);
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Helvetica Neue", sans-serif;
+}
+
+/* ---------- Sidebar ---------- */
+.amh-sidebar {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    background: linear-gradient(180deg, #161617 0%, #0e0e0f 100%);
+    border-right: 1px solid var(--border);
+    padding: 24px 12px;
+    overflow-y: auto;
+}
+.amh-sidebar__brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 12px 22px;
+    font-weight: 700;
+    font-size: 1.05rem;
+    letter-spacing: -0.01em;
+}
+.amh-sidebar__brand .dot {
+    width: 12px; height: 12px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+}
+.amh-sidebar__group-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    padding: 16px 14px 6px;
+}
+.amh-navitem {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    color: var(--text-dim);
+    text-align: left;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+.amh-navitem:hover { background: var(--surface); color: var(--text); }
+.amh-navitem.is-active {
+    background: linear-gradient(135deg, rgba(250,35,59,0.18), rgba(251,92,116,0.12));
+    color: var(--text);
+    font-weight: 600;
+}
+.amh-navitem__badge {
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 1px 8px;
+    border-radius: 999px;
+}
+
+/* ---------- Main panel ---------- */
+.amh-main { padding: 28px 36px 80px; max-width: 1200px; }
+.amh-main__title { font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; margin: 4px 0 18px; }
+
+/* ---------- Controls bar ---------- */
+.amh-controls {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 18px;
+    padding: 14px 0 18px;
+    margin-bottom: 12px;
+    background: linear-gradient(180deg, var(--bg) 70%, rgba(11,11,12,0));
+    border-bottom: 1px solid var(--border);
+}
+.amh-topx { display: flex; align-items: center; gap: 8px; color: var(--text-dim); font-size: 0.9rem; }
+.amh-topx input {
+    width: 64px; background: var(--surface-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; font-size: 0.95rem;
+}
+.amh-chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.amh-chip {
+    background: var(--surface-2); color: var(--text-dim);
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: 5px 12px; font-size: 0.85rem; cursor: pointer; transition: all 0.15s;
+}
+.amh-chip:hover { color: var(--text); }
+.amh-chip.is-on {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: #fff; border-color: transparent; font-weight: 600;
+}
+.amh-chip--action { background: transparent; text-decoration: underline; border: 0; padding: 5px 6px; }
+
+/* ---------- Tabs (By Media) ---------- */
+.amh-tabs { display: flex; gap: 6px; margin-bottom: 20px; }
+.amh-tab {
+    background: transparent; border: 0; color: var(--text-dim);
+    padding: 8px 18px; border-radius: 999px; font-size: 0.95rem; cursor: pointer; transition: all 0.15s;
+}
+.amh-tab:hover { color: var(--text); background: var(--surface); }
+.amh-tab.is-active { background: var(--surface-2); color: var(--text); font-weight: 600; }
+
+/* ---------- Ranked lists ---------- */
+.amh-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 18px 8px;
+}
+.amh-card__title { font-size: 1rem; font-weight: 700; margin: 0 0 12px; letter-spacing: -0.01em; }
+.amh-rank { list-style: none; margin: 0; padding: 0; }
+.amh-rank__item { display: flex; align-items: center; gap: 12px; padding: 9px 6px; border-radius: 8px; }
+.amh-rank__item:hover { background: var(--surface-2); }
+.amh-rank__num { width: 22px; text-align: right; color: var(--text-dim); font-variant-numeric: tabular-nums; font-size: 0.9rem; }
+.amh-rank__body { min-width: 0; flex: 1; }
+.amh-rank__name { font-weight: 600; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.amh-rank__sub { color: var(--text-dim); font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.amh-rank__meta { text-align: right; color: var(--text-dim); font-size: 0.8rem; white-space: nowrap; }
+.amh-rank__meta strong { color: var(--text); font-weight: 600; display: block; }
+.amh-empty { color: var(--text-dim); padding: 40px 0; text-align: center; }
+
+/* ---------- By Year layout ---------- */
+.amh-year-section { margin-bottom: 34px; }
+.amh-year-section__head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+.amh-year-section__year { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; }
+.amh-year-section__line { flex: 1; height: 1px; background: var(--border); }
+.amh-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+@media (max-width: 900px) { .amh-cols { grid-template-columns: 1fr; } }
+
+/* ---------- Exclusions ---------- */
+.amh-excl__search {
+    width: 100%; max-width: 420px; background: var(--surface-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; font-size: 0.95rem; margin-bottom: 16px;
+}
+.amh-excl__row {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--surface); margin-bottom: 8px;
+}
+.amh-excl__row.is-excluded { opacity: 0.55; }
+.amh-btn {
+    border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+    border-radius: 8px; padding: 6px 14px; font-size: 0.85rem; cursor: pointer; transition: all 0.15s;
+}
+.amh-btn:hover { border-color: var(--accent); }
+.amh-btn--accent { background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent; color: #fff; font-weight: 600; }
+
+/* ---------- Preserved (Overview/Trends/All Songs) sections ---------- */
+.amh-dashboard .box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    color: var(--text); padding: 18px; margin-bottom: 18px;
+}
+.amh-dashboard .box.year { display: flex; flex-direction: column; justify-content: space-between; }
+.amh-dashboard .years { display: flex; flex-wrap: wrap; gap: 16px; }
+.amh-dashboard .years .box { flex: 1 1 220px; }
+.amh-dashboard .reasons { display: flex; flex-wrap: wrap; gap: 12px; }
+.amh-dashboard .reason { flex: 1 1 180px; }
+.amh-dashboard a { color: var(--accent-2); }
+
+@media (max-width: 760px) {
+    .amh-dashboard { grid-template-columns: 1fr; }
+    .amh-sidebar { position: static; height: auto; display: flex; flex-wrap: wrap; gap: 6px; }
+    .amh-main { padding: 20px 16px 60px; }
+}
+
+/* ---------- Loading spinner (was missing CSS entirely) ---------- */
+.sk-fading-circle { margin: 40px auto; width: 40px; height: 40px; position: relative; }
+.sk-fading-circle .sk-circle { width: 100%; height: 100%; position: absolute; left: 0; top: 0; }
+.sk-fading-circle .sk-circle:before {
+    content: ''; display: block; margin: 0 auto; width: 15%; height: 15%;
+    background-color: #fa233b; border-radius: 100%;
+    animation: sk-circleFadeDelay 1.2s infinite ease-in-out both;
+}
+.sk-fading-circle .sk-circle2 { transform: rotate(30deg); }
+.sk-fading-circle .sk-circle3 { transform: rotate(60deg); }
+.sk-fading-circle .sk-circle4 { transform: rotate(90deg); }
+.sk-fading-circle .sk-circle5 { transform: rotate(120deg); }
+.sk-fading-circle .sk-circle6 { transform: rotate(150deg); }
+.sk-fading-circle .sk-circle7 { transform: rotate(180deg); }
+.sk-fading-circle .sk-circle8 { transform: rotate(210deg); }
+.sk-fading-circle .sk-circle9 { transform: rotate(240deg); }
+.sk-fading-circle .sk-circle10 { transform: rotate(270deg); }
+.sk-fading-circle .sk-circle11 { transform: rotate(300deg); }
+.sk-fading-circle .sk-circle12 { transform: rotate(330deg); }
+.sk-fading-circle .sk-circle2:before { animation-delay: -1.1s; }
+.sk-fading-circle .sk-circle3:before { animation-delay: -1s; }
+.sk-fading-circle .sk-circle4:before { animation-delay: -0.9s; }
+.sk-fading-circle .sk-circle5:before { animation-delay: -0.8s; }
+.sk-fading-circle .sk-circle6:before { animation-delay: -0.7s; }
+.sk-fading-circle .sk-circle7:before { animation-delay: -0.6s; }
+.sk-fading-circle .sk-circle8:before { animation-delay: -0.5s; }
+.sk-fading-circle .sk-circle9:before { animation-delay: -0.4s; }
+.sk-fading-circle .sk-circle10:before { animation-delay: -0.3s; }
+.sk-fading-circle .sk-circle11:before { animation-delay: -0.2s; }
+.sk-fading-circle .sk-circle12:before { animation-delay: -0.1s; }
+@keyframes sk-circleFadeDelay { 0%, 39%, 100% { opacity: 0; } 40% { opacity: 1; } }
