@@ -15,9 +15,10 @@ class App extends Component {
 
   constructor(props) {
     super(props);
-    this.state = { 
+    this.state = {
       data: [],
-      libraryData: null
+      libraryData: null,
+      dailyTracksData: null
     };
   }
 
@@ -31,13 +32,14 @@ class App extends Component {
     var appToLoad;
 
     if (this.state.data.length > 0) {
-      appToLoad = <Results data={this.state.data} libraryData={this.state.libraryData} />;
+      appToLoad = <Results data={this.state.data} libraryData={this.state.libraryData} dailyTracksData={this.state.dailyTracksData} />;
     } else {
-      appToLoad = <Banner dataResponseHandler={(data, libraryData) => {
+      appToLoad = <Banner dataResponseHandler={(data, libraryData, dailyTracksData) => {
         this.setState({
           data: data,
-          libraryData: libraryData
-        })        
+          libraryData: libraryData,
+          dailyTracksData: dailyTracksData
+        })
       }} />;
     }
 
