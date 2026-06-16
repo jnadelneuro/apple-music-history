@@ -4,7 +4,7 @@ import React from 'react';
  * Shared controls for the analytical views: a "Top X" size input and
  * multi-select year chips (any subset, non-consecutive allowed).
  */
-function ControlsBar({ topX, onTopX, years, selectedYears, onToggleYear, onAllYears, onNoneYears }) {
+function ControlsBar({ topX, onTopX, years, selectedYears, onToggleYear, onAllYears, onNoneYears, showYears = true }) {
     const selected = new Set(selectedYears.map(String));
     return (
         <div className="amh-controls">
@@ -22,7 +22,7 @@ function ControlsBar({ topX, onTopX, years, selectedYears, onToggleYear, onAllYe
                 />
             </label>
 
-            <div className="amh-chips">
+            {showYears && <div className="amh-chips">
                 {years.map((y) => (
                     <button
                         key={y}
@@ -34,7 +34,7 @@ function ControlsBar({ topX, onTopX, years, selectedYears, onToggleYear, onAllYe
                 ))}
                 <button className="amh-chip amh-chip--action" onClick={onAllYears}>All</button>
                 <button className="amh-chip amh-chip--action" onClick={onNoneYears}>None</button>
-            </div>
+            </div>}
         </div>
     );
 }

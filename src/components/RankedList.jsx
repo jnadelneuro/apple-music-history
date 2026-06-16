@@ -10,7 +10,11 @@ import Computation from './Computation';
  *   - 'album'  -> name = key
  */
 function RankedList({ title, entries, kind, limit }) {
-    const items = (entries || []).slice(0, limit);
+    // "Unknown Artist" is a placeholder, not a real artist — keep it out of artist charts.
+    const source = kind === 'artist'
+        ? (entries || []).filter((e) => e.key !== 'Unknown Artist')
+        : (entries || []);
+    const items = source.slice(0, limit);
 
     return (
         <div className="amh-card">

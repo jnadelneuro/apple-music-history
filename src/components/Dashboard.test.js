@@ -27,15 +27,16 @@ function renderInto(el) {
     return div;
 }
 
-it('renders the By Year dashboard with sidebar + ranked lists', () => {
+it('renders the All Time dashboard (default) with sidebar + ranked lists', () => {
     const div = renderInto(
         <Dashboard results={results} excludedSongs={[]} toggleExcluded={() => {}} clearExcluded={() => {}} />
     );
     const text = div.textContent;
+    expect(text).toContain('All Time');         // default view title + sidebar item
     expect(text).toContain('By Year');
     expect(text).toContain('By Media');
+    expect(text).toContain('Listening Trends');
     expect(text).toContain('Exclusions');
-    expect(text).toContain('2022');
     expect(text).toContain('Hello');   // song
     expect(text).toContain('Adele');   // artist
     expect(text).toContain('25');      // album
