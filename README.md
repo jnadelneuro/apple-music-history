@@ -1,29 +1,32 @@
 [![Netlify Status](https://api.netlify.com/api/v1/badges/8b888380-b867-4870-91c8-04ebdf823036/deploy-status)](https://app.netlify.com/sites/awesome-agnesi-2f5b8f/deploys)
 
-> **Warning**
-> With the release of Apple's native tool for music history, I've decided to retire the tool as it is stuck in dependency hell. Feel free to fork and bring it up to date if you wish, but don't expect it to work with any Apple data exports after 2022-01-01.
-
 # [Apple Music History](https://music.patmurray.co)
 
-Client React app to get info from your apple music history
+Client React app to get info from your apple music history.
 
 Read more [on Pat Murray's site](https://patmurray.co/projects/apple-music-analyser/)
 
 ## Features
 
-- 📊 Analyze your Apple Music play history from CSV exports
-- 🎵 **NEW: Track Matching** - Match plays to library tracks and identify songs with multiple versions
-- 📈 Detailed statistics on plays, artists, and listening patterns
+- 📊 Analyze your full Apple Music listening history
+- 🎤 Top songs, artists and albums — all-time and by year
+- 📈 Detailed statistics on plays, skips and listening patterns
 - 📅 Calendar heatmaps and time-based analysis
 - 🔒 Privacy-focused: All processing happens in your browser
 
-### Track Matching (New!)
+## Data files
 
-The app now includes track matching functionality that:
-- Matches play activity to your Apple Music library by song name
-- Flags **uncertain matches** when a song name appears **2 or more times** in your library
-- Helps identify different versions (remasters, live recordings, etc.)
-- See [TRACK_MATCHING.md](TRACK_MATCHING.md) for detailed documentation
+The app reads two files from your Apple privacy export (in the **Apple Music Activity** folder):
+
+- **`Apple Music - Play History Daily Tracks.csv`** *(required)* — your full play
+  history. Each row already includes the artist and song name (in `Track
+  Description`), per-day play and skip counts, and a `Track Identifier`. Artists
+  and songs need no extra lookup.
+- **`Apple Music Library Tracks.json`** *(optional)* — used only to add **album**
+  analytics. Plays are matched to your library by exact `Track Identifier`, which
+  correctly attributes a song to the right album even when the same title appears
+  on multiple releases (single vs. album, deluxe editions, etc.). Without it,
+  everything except top-albums still works.
 
 ## Using
 

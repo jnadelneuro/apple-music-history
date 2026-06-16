@@ -163,7 +163,9 @@ class Banner extends Component {
         if (!file) return;
 
         let data = [];
-        const filterDate = document.getElementById("filterDate").value;
+        // <input type="date"> gives "YYYY-MM-DD"; the daily file's "Date Played"
+        // is "YYYYMMDD", so compare both as digits-only strings.
+        const filterDate = document.getElementById("filterDate").value.replace(/-/g, '');
 
         Papa.parse(file, {
             header: true,
@@ -172,20 +174,20 @@ class Banner extends Component {
             step: (results) => {
                 // Fix: Extract the first item from the array
                 const row = results.data[0];
-                
+
                 // Guard clause in case empty row slips through
                 if (!row) return;
 
-                // Filter on the fly if needed
+                // Filter on the fly if a start date was supplied
                 if (filterDate.length > 1) {
-                    if (row["Event End Timestamp"] >= filterDate + "T00:00:00" || 
-                        row["Event Start Timestamp"] >= filterDate + "T00:00:00") {
+                    const playedDate = String(row["Date Played"] || '');
+                    if (playedDate >= filterDate) {
                         data.push(row);
                     }
                 } else {
                     data.push(row);
                 }
-                
+
                 // Log progress every 50000 rows
                 if (data.length % 50000 === 0) {
                     console.log('Processed:', data.length, 'records so far...');
@@ -224,12 +226,12 @@ class Banner extends Component {
                     <p>No data ever leaves your computer and all computation is done in the browser.</p>
                     
                     <div className="box" style={{backgroundColor: '#d1ecf1', borderColor: '#bee5eb', padding: '15px', marginBottom: '20px'}}>
-                        <h5>📁 Step 1: Upload Library (REQUIRED for Artist Names)</h5>
-                        <p><strong>Important:</strong> The CSV file does not contain artist information. You must upload your <strong>Apple Music Library Activity.json</strong> file to see artist names. Without this file, all songs will show as "Unknown Artist".</p>
-                        <input 
-                            id="libraryFile" 
-                            name="libraryFile" 
-                            type="file" 
+                        <h5>📁 Step 1: Upload Library (optional — needed for album names)</h5>
+                        <p>The play history already includes artist and song names, so this step is optional. Upload your <strong>Apple Music Library Tracks.json</strong> file to also see <strong>album</strong> analytics — songs are matched to your library by track ID. Without it, top albums won't be available.</p>
+                        <input
+                            id="libraryFile"
+                            name="libraryFile"
+                            type="file"
                             accept=".json"
                             onChange={this.handleLibraryUpload}
                             style={{marginBottom: '10px'}}
@@ -241,26 +243,26 @@ class Banner extends Component {
                         )}
                         {!this.state.libraryData && (
                             <p style={{color: '#856404', marginTop: '10px', fontWeight: 'bold'}}>
-                                ⚠️ No library file uploaded - artist names will not be available
+                                ⚠️ No library file uploaded - album names will not be available
                             </p>
                         )}
                     </div>
 
                     <div className="box" style={{backgroundColor: '#fff3cd', borderColor: '#ffc107', padding: '15px', marginBottom: '20px'}}>
-                        <h5>📊 Step 2: Upload Play Activity (Required)</h5>
-                        <p>Upload your <strong>Apple Music Play Activity.csv</strong> file.</p>
+                        <h5>📊 Step 2: Upload Play History (Required)</h5>
+                        <p>Upload your <strong>Apple Music - Play History Daily Tracks.csv</strong> file. This contains your full listening history with artist names, play counts and skip counts.</p>
                         <div>
                             <div style={{marginBottom: '20px'}}>
                                 <p>If you want to specify the start of the report, such as to only include 2021, input 01-01-2021 below. Otherwise, leave it blank to include all data.</p>
                                 Choose date: <input id="filterDate" type="date" />
                             </div>
-                            <input 
-                                id="file" 
-                                name="file" 
-                                className="inputfile" 
-                                type="file" 
+                            <input
+                                id="file"
+                                name="file"
+                                className="inputfile"
+                                type="file"
                                 accept=".csv"
-                                onChange={this.handleCsvUpload} 
+                                onChange={this.handleCsvUpload}
                             />
                             <p>Loading may take a moment... be patient</p>
                         </div>
@@ -271,8 +273,9 @@ class Banner extends Component {
                 <div className="box">
                     <h3>Where is the file?</h3>
 
-                    <p>After downloading it from the privacy portal (<a href="https://privacy.apple.com">privacy.apple.com</a>). The file is at:</p>
-                    <pre>App Store, iTunes Store, iBooks Store and Apple Music/App_Store_iTunes_Store_iBooks_Store_Apple_Music/Apple Music Activity/Apple Music Play Activity.csv</pre>
+                    <p>After downloading it from the privacy portal (<a href="https://privacy.apple.com">privacy.apple.com</a>). The files are in the <strong>Apple Music Activity</strong> folder:</p>
+                    <pre>Apple Media Services information/Apple Music Activity/Apple Music - Play History Daily Tracks.csv
+Apple Media Services information/Apple Music Activity/Apple Music Library Tracks.json</pre>
                     <p><a href="https://www.macrumors.com/2018/11/29/web-app-apple-music-history/">Follow this tutorial from MacRumors for more detailed instructions.</a></p>
                     <a href="/step1.png"><img style={{ width: '300px' }} src={"/step1.png"} alt="" /></a>
                     <a href="/step2.png"><img style={{ width: '300px' }} src={"/step2.png"} alt="" /></a>
