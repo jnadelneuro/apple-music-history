@@ -1,24 +1,6 @@
 import React, { Component } from 'react';
-import { Jumbotron, Button } from 'reactstrap';
 import Computation from "./Computation";
-import numeral from 'numeral';
-
-import CalendarHeatmap from 'react-calendar-heatmap';
-import 'react-calendar-heatmap/dist/styles.css';
-import ReactTooltip from 'react-tooltip';
-import HeatMap from 'react-heatmap-grid';
-
-import ReasonsBox from './ReasonsBox';
-import TopYears from './TopYears';
-import MonthChart from './MonthChart';
-import YearsTopSongs from './YearsTopSongs';
-import YearsTopArtists from './YearsTopArtists';
-import YearsTopAlbums from './YearsTopAlbums';
-import TotalsBoxes from './TotalsBoxes';
-import AllSongsTable from './AllSongsTable';
-import TopSongBox from './TopSongBox';
-import Wrapped from './Wrapped';
-
+import Dashboard from "./Dashboard";
 
 class Results extends Component {
 
@@ -28,334 +10,79 @@ class Results extends Component {
             data: props.data,
             libraryData: props.libraryData,
             dailyTracksData: props.dailyTracksData,
-            excludedSongs: []
+            excludedSongs: [],
+            results: null
         };
+        this.toggleExcluded = this.toggleExcluded.bind(this);
+        this.clearExcluded = this.clearExcluded.bind(this);
     }
 
     componentDidMount() {
+        this.recompute(this.state.excludedSongs);
+    }
+
+    recompute(excludedSongs) {
         setTimeout(() => {
-            Computation.calculateTop(this.state.data, this.state.excludedSongs, results => {
-                this.setState({
-                    songs: results.songs,
-                    days: results.days,
-                    months: results.months,
-                    reasons: results.reasons,
-                    data: this.state.data,
-                    years: results.years,
-                    yearArtists: results.yearArtists,
-                    yearAlbums: results.yearAlbums,
-                    artists: results.artists,
-                    albums: results.albums,
-                    totals: results.totals,
-                    filteredSongs: results.filteredSongs,
-                    excludedSongs: results.excludedSongs,
-                    hoursArray: results.hoursArray,
-                    thisYear: results.thisYear,
-                    matchResults: results.matchResults
-                });
+            Computation.calculateTop(this.state.data, excludedSongs, (results) => {
+                this.setState({ results, excludedSongs });
             }, this.state.libraryData, this.state.dailyTracksData);
         }, 0);
     }
 
-    addExcluded(row) {
-
-        var key = row.original.key;
-
-        var excludedSongs = this.state.excludedSongs;
+    toggleExcluded(key) {
+        let excludedSongs = this.state.excludedSongs.slice();
         if (excludedSongs.includes(key)) {
-            excludedSongs = excludedSongs.filter(item => item !== key);
+            excludedSongs = excludedSongs.filter((k) => k !== key);
         } else {
             excludedSongs.push(key);
         }
-
-        setTimeout(() => {
-            Computation.calculateTop(this.state.data, excludedSongs, results => {
-                
-                this.setState({
-                    songs: results.songs,
-                    days: results.days,
-                    months: results.months,
-                    reasons: results.reasons,
-                    data: this.state.data,
-                    years: results.years,
-                    yearArtists: results.yearArtists,
-                    yearAlbums: results.yearAlbums,
-                    artists: results.artists,
-                    albums: results.albums,
-                    totals: results.totals,
-                    filteredSongs: results.filteredSongs,
-                    excludedSongs: results.excludedSongs,
-                    hoursArray: results.hoursArray,
-                    thisYear: results.thisYear,
-                    matchResults: results.matchResults
-                });
-                
-            }, this.state.libraryData, this.state.dailyTracksData);
-        }, 0);
-
-
-
+        this.recompute(excludedSongs);
     }
 
     clearExcluded() {
-        setTimeout(() => {
-            Computation.calculateTop(this.state.data, [], results => {
-                this.setState({
-                    songs: results.songs,
-                    days: results.days,
-                    months: results.months,
-                    reasons: results.reasons,
-                    data: this.state.data,
-                    years: results.years,
-                    yearArtists: results.yearArtists,
-                    yearAlbums: results.yearAlbums,
-                    artists: results.artists,
-                    albums: results.albums,
-                    totals: results.totals,
-                    filteredSongs: results.filteredSongs,
-                    excludedSongs: results.excludedSongs,
-                    hoursArray: results.hoursArray,
-                    thisYear: results.thisYear,
-                    matchResults: results.matchResults
-                });
-            }, this.state.libraryData, this.state.dailyTracksData);
-        }, 0);
+        this.recompute([]);
     }
 
-
     render() {
+        const { results } = this.state;
 
-        if (this.state.songs == null) {
-            return (<div><h4  style={{textAlign: 'center'}}>Loading...</h4><div className="sk-fading-circle">
-            <div className="sk-circle1 sk-circle"></div>
-            <div className="sk-circle2 sk-circle"></div>
-            <div className="sk-circle3 sk-circle"></div>
-            <div className="sk-circle4 sk-circle"></div>
-            <div className="sk-circle5 sk-circle"></div>
-            <div className="sk-circle6 sk-circle"></div>
-            <div className="sk-circle7 sk-circle"></div>
-            <div className="sk-circle8 sk-circle"></div>
-            <div className="sk-circle9 sk-circle"></div>
-            <div className="sk-circle10 sk-circle"></div>
-            <div className="sk-circle11 sk-circle"></div>
-            <div className="sk-circle12 sk-circle"></div>
-          </div>
-          </div>);
+        if (results == null) {
+            return (
+                <div>
+                    <h4 style={{ textAlign: 'center' }}>Loading...</h4>
+                    <div className="sk-fading-circle">
+                        <div className="sk-circle1 sk-circle"></div>
+                        <div className="sk-circle2 sk-circle"></div>
+                        <div className="sk-circle3 sk-circle"></div>
+                        <div className="sk-circle4 sk-circle"></div>
+                        <div className="sk-circle5 sk-circle"></div>
+                        <div className="sk-circle6 sk-circle"></div>
+                        <div className="sk-circle7 sk-circle"></div>
+                        <div className="sk-circle8 sk-circle"></div>
+                        <div className="sk-circle9 sk-circle"></div>
+                        <div className="sk-circle10 sk-circle"></div>
+                        <div className="sk-circle11 sk-circle"></div>
+                        <div className="sk-circle12 sk-circle"></div>
+                    </div>
+                </div>
+            );
         }
 
-        if (this.state.songs.length <= 1) {
-            return(<div className="errorDiv box">There was an error processing your data <span role="img" aria-label="sad face emoji">☹️</span> , please double check the loaded file is correct: "<em>Apple Music Play Activity.<strong>csv</strong></em>".<br/>For more help please follow this helpful <a href="https://www.macrumors.com/2018/11/29/web-app-apple-music-history/">guide from MacRumors</a>.<br/><br/>If problems persist, please check the column titles against <a href="https://github.com/PatMurrayDEV/apple-music-history/blob/master/src/components/Banner.jsx">this file</a> or <a href="https://github.com/PatMurrayDEV/apple-music-history/blob/master/src/components/Banner.jsx">create a pull request</a>. 
-                    <br/><br/><a href="http://music.patmurray.co">Reload Page...</a></div>)
+        if (results.songs.length <= 1) {
+            return (
+                <div className="errorDiv box">There was an error processing your data <span role="img" aria-label="sad face emoji">☹️</span> , please double check the loaded file is correct: "<em>Apple Music Play Activity.<strong>csv</strong></em>".<br />For more help please follow this helpful <a href="https://www.macrumors.com/2018/11/29/web-app-apple-music-history/">guide from MacRumors</a>.
+                    <br /><br /><a href="http://music.patmurray.co">Reload Page...</a></div>
+            );
         }
-
-
-        // Exclude "Unknown Artist" from the artist list
-        const filteredArtists = this.state.artists.filter(artist => artist.key !== "Unknown Artist");
-        let artistTotalCount = (filteredArtists.length > 10 ? 10 : filteredArtists.length);
-        var artistBoxes = [];
-        for (let index = 0; index < artistTotalCount; index++) {
-            const artist = filteredArtists[index];
-            const div = <div className="box year" key={artist.key}>
-            <div>
-                <p style={{ marginBottom: 0 }}>Most played artist No.{index + 1}</p>
-                <h1>{artist.key}</h1>
-            </div>
-            <div>
-                <hr className="my-2" />
-                <p className="lead">{numeral(artist.value.plays).format('0,0')} Plays</p>
-                <p>{Computation.convertTime(artist.value.time)}</p>
-            </div>
-            </div>
-            artistBoxes.push(div);
-        }
-
-        // Create album boxes similar to artist boxes
-        let albumTotalCount = (this.state.albums.length > 10 ? 10 : this.state.albums.length);
-        var albumBoxes = [];
-        for (let index = 0; index < albumTotalCount; index++) {
-            const album = this.state.albums[index];
-            const div = <div className="box year" key={album.key}>
-            <div>
-                <p style={{ marginBottom: 0 }}>Most played album No.{index + 1}</p>
-                <h1>{album.key}</h1>
-            </div>
-            <div>
-                <hr className="my-2" />
-                <p className="lead">{numeral(album.value.plays).format('0,0')} Plays</p>
-                <p>{Computation.convertTime(album.value.time)}</p>
-            </div>
-            </div>
-            albumBoxes.push(div);
-        }
-
-
-        var topSong = this.state.filteredSongs[0];
-
-
-        var topSongBox = <TopSongBox song={topSong} />;
-
-        var heatmapData = [];
-        var firstDay = new Date();
-        var maxValue = 0;
-        var lastDate = new Date('2015-01-01T01:00:00');
-        for (let index = 0; index < this.state.days.length; index++) {
-            const day = this.state.days[index];
-            heatmapData.push({
-                date: day.key,
-                count: day.value.time
-            })
-            if (day.value.time > maxValue) {
-                maxValue = day.value.time
-            }
-            if (new Date(day.key) < firstDay) {
-                firstDay = new Date(day.key)
-            }
-            if (new Date(day.key) > lastDate) {
-                lastDate = new Date(day.key)
-            }
-        }
-
-
-
-        var daysTodayCount = Math.round((lastDate - firstDay) / (1000 * 60 * 60 * 24))
-        var dayswithoutmusic = daysTodayCount - this.state.days.length;
-
-        const xLabels = ['12am', '1am', '2am', '3am', '4am', '5am', '6am', '7am', '8am', '9am', '10am', '11am', '12pm', '1pm', '2pm', '3pm', '4pm', '5pm', '6pm', '7pm', '8pm', '9pm', '10pm', '11pm'];
-        const xLabelsVisibility = [true, false, false, true, false, false, true, false, false, true, false, false, true, false, false, true, false, false, true, false, false, true, false, false]
-        const yLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thur', 'Fri', 'Sat'];
-
-
 
         return (
-            <div>
-
-                
-
-                <Jumbotron>
-
-                    
-
-                    {topSongBox}
-
-                    {this.state.matchResults && this.state.matchResults.statistics.uncertain > 0 &&
-                        <div className="box" style={{backgroundColor: '#fff3cd', borderColor: '#ffc107'}}>
-                            <h3>⚠️ Library Match Information</h3>
-                            <p>
-                                <strong>{this.state.matchResults.statistics.uncertain}</strong> plays matched songs with multiple versions in your library. 
-                                These matches may be uncertain as the same song name appears 2 or more times in your library.
-                            </p>
-                            {this.state.matchResults.uncertainSongs && this.state.matchResults.uncertainSongs.length > 0 && 
-                                this.state.matchResults.uncertainSongs.length <= 20 && (
-                                <div>
-                                    <strong>Songs with multiple library versions:</strong>
-                                    <ul style={{columnCount: this.state.matchResults.uncertainSongs.length > 10 ? 2 : 1}}>
-                                        {this.state.matchResults.uncertainSongs.map((song, idx) => (
-                                            <li key={idx}>{song}</li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            )}
-                            {this.state.matchResults.uncertainSongs && this.state.matchResults.uncertainSongs.length > 20 && (
-                                <p><em>{this.state.matchResults.uncertainSongs.length} unique songs with multiple library versions</em></p>
-                            )}
-                        </div>
-                    }
-
-                    <TopYears years={this.state.years} />
-                    <TotalsBoxes totals={this.state.totals} songs={this.state.songs.length} artists={this.state.artists.length} day={this.state.days[0]} />
-                    
-                    <h2 className="section-heading">Top Artists</h2>
-                    <div className="years artists">
-                        {artistBoxes}
-                    </div>
-
-                    <h2 className="section-heading section-divider">Top Albums</h2>
-                    <div className="years artists">
-                        {albumBoxes}
-                    </div>
-
-                    {this.state.thisYear.totalPlays > 1 &&
-                        <Wrapped year={this.state.thisYear} songs={this.state.thisYear.songs}/>
-                    }
-
-                    <MonthChart months={this.state.months} />
-
-                    <div className="box">
-                        <h3>Playing Time by Date</h3>
-                        <CalendarHeatmap
-                            startDate={firstDay}
-                            endDate={lastDate}
-                            values={heatmapData}
-                            showWeekdayLabels={true}
-                            titleForValue={(value) => {
-                                if (value && value.date != null) {
-                                    return `${Computation.convertTime(value.count)} on ${value.date}`
-                                } else {
-                                    return ""
-                                }
-
-                            }}
-                            tooltipDataAttrs={(value) => {
-                                if (value && value.date != null) {
-                                    return { 'data-tip': `${Computation.convertTime(value.count)} on ${value.date}` }
-                                } else {
-                                    return { 'data-tip': '' }
-                                }
-
-                            }}
-                            classForValue={(value) => {
-                                if (!value) {
-                                    return 'color-empty';
-                                }
-                                var number = Math.ceil((value.count / maxValue * 100) / 10) * 10
-                                return `color-scale-${number}`;
-                            }}
-                        />
-                        <ReactTooltip />
-                        <p>There were <strong>{numeral(dayswithoutmusic).format('0,0')}</strong> out of <strong>{numeral(daysTodayCount).format('0,0')}</strong> days you didn't listen to music.</p>
-                    </div>
-
-                    <div>
-                        <div className="box">
-                            <h3>Playing Time by Hour of Day</h3>
-                            <HeatMap
-                                squares={true}
-                                xLabelsVisibility={xLabelsVisibility}
-                                xLabels={xLabels}
-                                yLabels={yLabels}
-                                data={this.state.hoursArray}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="box major-section-separator">
-                        <h1>Top Songs by Year</h1>
-                        <YearsTopSongs years={this.state.years} />
-                    </div>
-
-                    <div className="box major-section-separator">
-                        <h1>Top Artists by Year</h1>
-                        <YearsTopArtists yearArtists={this.state.yearArtists} />
-                    </div>
-
-                    <div className="box major-section-separator">
-                        <h1>Top Albums by Year</h1>
-                        <YearsTopAlbums yearAlbums={this.state.yearAlbums} />
-                    </div>
-
-                    <ReasonsBox reasons={this.state.reasons} />
-
-                    <div className="box">
-                        <div className="title-flex"><h1>All Songs</h1> <Button outline color="secondary" size="sm" onClick={() => this.clearExcluded()} active={this.state.excludedSongs.length > 0}>Clear Excluded ({this.state.excludedSongs.length})</Button></div>
-                        <AllSongsTable addExcluded={row => this.addExcluded(row)} songs={this.state.songs} />
-                    </div>
-
-                </Jumbotron>
-
-
-            </div>
+            <Dashboard
+                results={results}
+                excludedSongs={this.state.excludedSongs}
+                toggleExcluded={this.toggleExcluded}
+                clearExcluded={this.clearExcluded}
+            />
         );
-
     }
 }
 
