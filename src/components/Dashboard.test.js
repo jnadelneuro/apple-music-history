@@ -5,6 +5,9 @@ import { act } from 'react-dom/test-utils';
 import Dashboard from './Dashboard';
 import ByMediaView from './ByMediaView';
 import ExclusionsView from './ExclusionsView';
+import SearchView from './SearchView';
+import DetailView from './DetailView';
+import { buildSearchItems } from './detail';
 
 const results = {
     years: [{ key: '2022', value: [{ key: "'Hello' by Adele", value: { plays: 5, time: 1000, name: 'Hello', artist: 'Adele', missedTime: 0 } }] }],
@@ -52,6 +55,37 @@ it('renders the By Media tabs and an aggregated list', () => {
     expect(text).toContain('Songs');
     expect(text).toContain('Artists');
     expect(text).toContain('25');
+    act(() => { ReactDOM.unmountComponentAtNode(div); });
+});
+
+it('renders search results for a query', () => {
+    const items = buildSearchItems(results);
+    const div = renderInto(<SearchView items={items} query="hel" onSelect={() => {}} />);
+    expect(div.textContent).toContain('Hello');
+    act(() => { ReactDOM.unmountComponentAtNode(div); });
+});
+
+it('renders an entity detail page with breakdowns', () => {
+    const rows = [{
+        'Song Name': 'Hello', 'Album Name': '25',
+        'Play Duration Milliseconds': '200000', 'Media Duration In Milliseconds': '295000',
+        'Start Position In Milliseconds': '0', 'End Position In Milliseconds': '200000',
+        'Event End Timestamp': '2021-03-10T15:00:00Z', 'End Reason Type': 'NATURAL_END_OF_TRACK',
+        'UTC Offset In Seconds': '0', 'Item Type': 'ITUNES_STORE_CONTENT', 'Media Type': 'AUDIO'
+    }];
+    const div = renderInto(
+        <DetailView
+            data={rows}
+            libraryData={[{ Title: 'Hello', Album: '25', Artist: 'Adele' }]}
+            dailyTracksData={null}
+            entity={{ type: 'song', name: 'Hello', artist: 'Adele' }}
+            onBack={() => {}}
+        />
+    );
+    const text = div.textContent;
+    expect(text).toContain('By Year');
+    expect(text).toContain('By Day of Week');
+    expect(text).toContain('By Hour of Day');
     act(() => { ReactDOM.unmountComponentAtNode(div); });
 });
 

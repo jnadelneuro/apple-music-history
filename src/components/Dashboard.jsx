@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 
 import Sidebar from './Sidebar';
 import ControlsBar from './ControlsBar';
@@ -8,7 +8,10 @@ import ExclusionsView from './ExclusionsView';
 import AllTimeView from './AllTimeView';
 import TrendsView from './TrendsView';
 import AllSongsView from './AllSongsView';
+import SearchView from './SearchView';
+import DetailView from './DetailView';
 import { availableYears } from './aggregate';
+import { buildSearchItems } from './detail';
 
 const VIEW_TITLES = {
     allTime: 'All Time',
@@ -16,16 +19,30 @@ const VIEW_TITLES = {
     byMedia: 'By Media',
     trends: 'Listening Trends',
     exclusions: 'Exclusions',
-    allSongs: 'All Songs'
+    allSongs: 'All Songs',
+    search: 'Search'
 };
 
-function Dashboard({ results, excludedSongs, toggleExcluded, clearExcluded }) {
+function Dashboard({ results, data, libraryData, dailyTracksData, excludedSongs, toggleExcluded, clearExcluded }) {
     const years = availableYears(results);
 
     const [activeView, setActiveView] = useState('allTime');
     const [topX, setTopX] = useState(10);
     const [selectedYears, setSelectedYears] = useState(years);
     const [activeMediaTab, setActiveMediaTab] = useState('albums');
+    const [query, setQuery] = useState('');
+    const [selectedEntity, setSelectedEntity] = useState(null);
+
+    const searchCandidates = useMemo(() => buildSearchItems(results), [results]);
+
+    const onSearchChange = (v) => {
+        setQuery(v);
+        setActiveView('search');
+    };
+    const selectEntity = (item) => {
+        setSelectedEntity(item);
+        setActiveView('detail');
+    };
 
     const toggleYear = (y) => {
         const key = String(y);
@@ -74,13 +91,31 @@ function Dashboard({ results, excludedSongs, toggleExcluded, clearExcluded }) {
         view = <ExclusionsView songs={results.songs} excludedSongs={excludedSongs} toggleExcluded={toggleExcluded} clearExcluded={clearExcluded} />;
     } else if (activeView === 'allSongs') {
         view = <AllSongsView results={results} excludedSongs={excludedSongs} toggleExcluded={toggleExcluded} clearExcluded={clearExcluded} />;
+    } else if (activeView === 'search') {
+        view = <SearchView items={searchCandidates} query={query} onSelect={selectEntity} />;
+    } else if (activeView === 'detail' && selectedEntity) {
+        view = (
+            <DetailView
+                data={data}
+                libraryData={libraryData}
+                dailyTracksData={dailyTracksData}
+                entity={selectedEntity}
+                onBack={() => setActiveView('search')}
+            />
+        );
     }
 
     return (
         <div className="amh-dashboard">
-            <Sidebar groups={groups} activeView={activeView} onSelect={setActiveView} />
+            <Sidebar
+                groups={groups}
+                activeView={activeView}
+                onSelect={setActiveView}
+                searchQuery={query}
+                onSearchChange={onSearchChange}
+            />
             <main className="amh-main">
-                <h1 className="amh-main__title">{VIEW_TITLES[activeView]}</h1>
+                {VIEW_TITLES[activeView] && <h1 className="amh-main__title">{VIEW_TITLES[activeView]}</h1>}
                 {showControls && (
                     <ControlsBar
                         topX={topX}

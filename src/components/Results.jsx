@@ -78,6 +78,9 @@ class Results extends Component {
         return (
             <Dashboard
                 results={results}
+                data={this.state.data}
+                libraryData={this.state.libraryData}
+                dailyTracksData={this.state.dailyTracksData}
                 excludedSongs={this.state.excludedSongs}
                 toggleExcluded={this.toggleExcluded}
                 clearExcluded={this.clearExcluded}
