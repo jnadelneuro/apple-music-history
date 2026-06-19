@@ -227,6 +227,16 @@ class Banner extends Component {
                     const col = PLAY_ACTIVITY_COLUMNS[i];
                     slim[col] = row[col];
                 }
+
+                // Apple occasionally logs a Play Duration far longer than the track
+                // itself (a stuck timer), which inflates listen-time totals. You can't
+                // play more of a track than its length in one play, so cap it.
+                const media = Number(slim["Media Duration In Milliseconds"]);
+                const dur = Number(slim["Play Duration Milliseconds"]);
+                if (media > 0 && dur > media) {
+                    slim["Play Duration Milliseconds"] = String(media);
+                }
+
                 data.push(slim);
 
                 if (data.length % 50000 === 0) {
