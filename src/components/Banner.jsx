@@ -26,7 +26,9 @@ class Banner extends Component {
         super(props);
         this.state = {
             processing: false,
-            progress: 0,
+            phase: '',
+            pct: 0,
+            count: 0,
             playFile: null,
             libraryFile: null,
             dailyFile: null
@@ -73,6 +75,8 @@ class Banner extends Component {
     parsePlayActivity(file) {
         return new Promise((resolve, reject) => {
             const data = [];
+            const size = file.size || 0;
+            let lastPct = -1;
             // <input type="date"> gives "YYYY-MM-DD" -> ISO prefix for timestamp compare.
             const filterDateRaw = document.getElementById("filterDate").value;
             const filterDate = filterDateRaw ? filterDateRaw + "T00:00:00" : "";
@@ -80,34 +84,45 @@ class Banner extends Component {
             Papa.parse(file, {
                 header: true,
                 skipEmptyLines: true,
+                // Small chunks keep the main thread responsive between reads so the
+                // progress bar actually paints (one big synchronous parse would freeze it).
+                chunkSize: 1024 * 1024 * 2,
                 step: (results) => {
                     const row = results.data;
-                    if (!row || !row["Song Name"]) return;
+                    if (row && row["Song Name"] && !(filterDate && (row["Event End Timestamp"] || "") < filterDate)) {
+                        // Project to only the needed columns to keep memory bounded.
+                        const slim = {};
+                        for (let i = 0; i < PLAY_ACTIVITY_COLUMNS.length; i++) {
+                            const col = PLAY_ACTIVITY_COLUMNS[i];
+                            slim[col] = row[col];
+                        }
 
-                    if (filterDate && (row["Event End Timestamp"] || "") < filterDate) return;
+                        // Apple occasionally logs a Play Duration far longer than the track
+                        // itself (a stuck timer), which inflates listen-time totals. You can't
+                        // play more of a track than its length in one play, so cap it.
+                        const media = Number(slim["Media Duration In Milliseconds"]);
+                        const dur = Number(slim["Play Duration Milliseconds"]);
+                        if (media > 0 && dur > media) {
+                            slim["Play Duration Milliseconds"] = String(media);
+                        }
 
-                    // Project to only the needed columns to keep memory bounded.
-                    const slim = {};
-                    for (let i = 0; i < PLAY_ACTIVITY_COLUMNS.length; i++) {
-                        const col = PLAY_ACTIVITY_COLUMNS[i];
-                        slim[col] = row[col];
+                        data.push(slim);
                     }
 
-                    // Apple occasionally logs a Play Duration far longer than the track
-                    // itself (a stuck timer), which inflates listen-time totals. You can't
-                    // play more of a track than its length in one play, so cap it.
-                    const media = Number(slim["Media Duration In Milliseconds"]);
-                    const dur = Number(slim["Play Duration Milliseconds"]);
-                    if (media > 0 && dur > media) {
-                        slim["Play Duration Milliseconds"] = String(media);
-                    }
-
-                    data.push(slim);
-                    if (data.length % 50000 === 0) {
-                        this.setState({ progress: data.length });
+                    // Report progress from bytes consumed (throttled to whole percents).
+                    const cursor = results.meta && results.meta.cursor;
+                    if (size > 0 && cursor) {
+                        const pct = Math.min(99, Math.floor((cursor / size) * 100));
+                        if (pct !== lastPct) {
+                            lastPct = pct;
+                            this.setState({ pct, count: data.length });
+                        }
                     }
                 },
-                complete: () => resolve(data),
+                complete: () => {
+                    this.setState({ pct: 100, count: data.length });
+                    resolve(data);
+                },
                 error: (err) => reject(err)
             });
         });
@@ -115,16 +130,34 @@ class Banner extends Component {
 
     handleGenerate = async () => {
         if (!this.state.playFile || this.state.processing) return;
-        this.setState({ processing: true, progress: 0 });
+        this.setState({ processing: true, phase: 'library', pct: 0, count: 0 });
         try {
             const libraryData = this.state.libraryFile ? await this.parseLibrary(this.state.libraryFile) : null;
+
+            this.setState({ phase: 'daily' });
             const dailyTracksData = this.state.dailyFile ? await this.parseDaily(this.state.dailyFile) : null;
+
+            this.setState({ phase: 'plays' });
             const data = await this.parsePlayActivity(this.state.playFile);
+
+            // Let the bar paint 100% before the (synchronous) report build takes over.
+            this.setState({ phase: 'building' });
+            await new Promise((r) => setTimeout(r, 50));
             this.props.dataResponseHandler(data, libraryData, dailyTracksData);
         } catch (err) {
             console.error('CSV parsing error:', err);
             alert('Error reading Play Activity CSV:\n\n' + err.message);
             this.setState({ processing: false });
+        }
+    }
+
+    phaseLabel() {
+        switch (this.state.phase) {
+            case 'library': return 'Reading library…';
+            case 'daily': return 'Reading daily tracks…';
+            case 'plays': return 'Reading play history…';
+            case 'building': return 'Building your report…';
+            default: return 'Working…';
         }
     }
 
@@ -135,7 +168,7 @@ class Banner extends Component {
     }
 
     render() {
-        const { processing, progress, playFile, libraryFile, dailyFile } = this.state;
+        const { processing, phase, pct, count, playFile, libraryFile, dailyFile } = this.state;
 
         return (
             <div>
@@ -200,9 +233,28 @@ class Banner extends Component {
                         <p style={{ marginTop: '10px', color: '#856404' }}>Choose your Play Activity file to enable this.</p>
                     )}
                     {processing && (
-                        <p style={{ marginTop: '10px' }}>
-                            Reading your data… {progress > 0 ? `${progress.toLocaleString()} plays so far` : 'starting up'} — large files take a moment.
-                        </p>
+                        <div style={{ marginTop: '16px', maxWidth: '480px' }}>
+                            <p style={{ marginBottom: '6px', fontWeight: 600 }}>{this.phaseLabel()}</p>
+                            {(phase === 'plays' || phase === 'building') && (
+                                <div style={{ background: '#e9ecef', borderRadius: '8px', height: '20px', overflow: 'hidden' }}>
+                                    <div
+                                        style={{
+                                            width: `${phase === 'building' ? 100 : pct}%`,
+                                            height: '100%',
+                                            background: 'linear-gradient(90deg, #fa233b, #fb5c74)',
+                                            transition: 'width 0.15s ease'
+                                        }}
+                                    />
+                                </div>
+                            )}
+                            <p style={{ marginTop: '6px', color: '#555' }}>
+                                {phase === 'plays'
+                                    ? `${pct}% · ${count.toLocaleString()} plays read`
+                                    : phase === 'building'
+                                        ? 'Crunching the numbers — this can take a few seconds for large libraries.'
+                                        : 'Reading file…'}
+                            </p>
+                        </div>
                     )}
                 </Jumbotron>
 
